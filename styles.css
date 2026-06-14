@@ -84,7 +84,6 @@ h2 {
   font-size: 15px;
 }
 
-.top button,
 .test button {
   min-height: 42px;
   border: 1px solid var(--ink);
@@ -95,13 +94,10 @@ h2 {
   transition: opacity 0.2s, background 0.2s, transform 0.1s;
 }
 
-.top button:hover:not(:disabled):not(.is-disabled),
 .test button:hover:not(:disabled):not(.is-disabled) {
   background: #3a322c;
 }
 
-.top button:disabled,
-.top button.is-disabled,
 .test button:disabled,
 .test button.is-disabled {
   opacity: 0.45;
@@ -351,6 +347,144 @@ h2 {
   margin: 10px 0 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.commission-board {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 250, 241, 0.72);
+  padding: 14px;
+}
+
+.commission-board h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.commission-board h2::before {
+  content: "📋";
+  font-size: 14px;
+}
+
+.job-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.job-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff8ec;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  outline: none;
+}
+
+.job-list-item:focus-visible {
+  border-color: var(--ruby);
+  box-shadow: 0 0 0 2px rgba(159, 69, 69, 0.25);
+}
+
+.job-list-item:hover:not(.active):not(.is-disabled) {
+  background: #fff1d6;
+  border-color: var(--brass);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(34, 24, 16, 0.08);
+}
+
+.job-list-item.active {
+  background: rgba(200, 154, 69, 0.15);
+  border-color: var(--brass);
+  box-shadow: inset 0 0 0 1px var(--brass);
+  cursor: default;
+}
+
+.job-list-item.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.job-list-item-name {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.job-list-item-fault {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.job-list-item-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.job-list-item-status.job-status-idle {
+  background: rgba(122, 110, 93, 0.1);
+  color: #7a6e5d;
+  border: 1px dashed rgba(122, 110, 93, 0.3);
+}
+
+.job-list-item-status.job-status-done {
+  background: rgba(92, 148, 110, 0.12);
+  color: #4b7a5c;
+  border: 1px solid rgba(92, 148, 110, 0.3);
+}
+
+.job-list-item-start {
+  align-self: flex-end;
+  margin-top: 4px;
+  padding: 5px 14px;
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  background: rgba(200, 154, 69, 0.12);
+  color: var(--bench);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  letter-spacing: 0.3px;
+}
+
+.job-list-item-start:hover:not(:disabled) {
+  background: rgba(200, 154, 69, 0.28);
+  box-shadow: 0 2px 6px rgba(200, 154, 69, 0.25);
+  transform: translateY(-1px);
+}
+
+.job-list-item-start:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.job-list-item-start:disabled {
+  background: rgba(83, 104, 121, 0.1);
+  border-color: rgba(83, 104, 121, 0.3);
+  color: var(--steel);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.active-job {
+  border-left: 3px solid var(--brass);
 }
 
 dl {
