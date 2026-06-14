@@ -1018,6 +1018,125 @@ input[type="range"] {
   }
 }
 
+.test-history {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 250, 241, 0.72);
+  padding: 14px;
+}
+
+.test-history h2 {
+  margin-bottom: 10px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.history-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 16px 8px;
+  font-style: italic;
+}
+
+.history-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fff8ec;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  animation: historySlideIn 0.3s ease;
+}
+
+@keyframes historySlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.history-job {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.history-job-name {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.history-score {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: white;
+}
+
+.history-score.score-s { background: #b8860b; }
+.history-score.score-a { background: var(--ruby); }
+.history-score.score-b { background: var(--steel); }
+.history-score.score-c { background: #7a6e5d; }
+.history-score.score-d { background: #5a4f42; }
+
+.history-error {
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-error strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.history-parts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.history-parts span {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.history-parts strong {
+  color: var(--ink);
+  font-weight: 700;
+  text-align: right;
+}
+
+.history-tune {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #e2d6c6;
+  display: flex;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.history-tune span {
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 600px) {
   .workbench {
     padding: 10px;

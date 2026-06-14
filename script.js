@@ -37,6 +37,8 @@ const effect = {
 let jobIndex = 0;
 let installed = { gear: null, spring: null, escapement: null, pendulum: null };
 let testTimer = null;
+let testHistory = [];
+const MAX_HISTORY = 5;
 
 const jobName = document.querySelector("#jobName");
 const jobFault = document.querySelector("#jobFault");
@@ -46,6 +48,7 @@ const lengthTune = document.querySelector("#lengthTune");
 const meshTune = document.querySelector("#meshTune");
 const errorReadout = document.querySelector("#errorReadout");
 const scoreReadout = document.querySelector("#scoreReadout");
+const historyList = document.querySelector("#historyList");
 
 function loadJob() {
   const job = jobs[jobIndex];
@@ -169,6 +172,63 @@ function estimateError(show) {
   return abs;
 }
 
+function addTestRecord() {
+  const job = jobs[jobIndex];
+  const error = Math.abs(Number(errorReadout.textContent.replace("秒/日", "")));
+  const score = scoreReadout.textContent;
+
+  const record = {
+    jobName: job.name,
+    parts: { ...installed },
+    lengthTune: Number(lengthTune.value),
+    meshTune: Number(meshTune.value),
+    error: error,
+    score: score,
+    timestamp: Date.now()
+  };
+
+  testHistory.unshift(record);
+  if (testHistory.length > MAX_HISTORY) {
+    testHistory.pop();
+  }
+
+  renderHistory();
+}
+
+function renderHistory() {
+  if (testHistory.length === 0) {
+    historyList.innerHTML = '<li class="history-empty">暂无测试记录</li>';
+    return;
+  }
+
+  historyList.innerHTML = testHistory.map((record, index) => {
+    const gearName = record.parts.gear ? partNames[`gear:${record.parts.gear}`] : "—";
+    const springName = record.parts.spring ? partNames[`spring:${record.parts.spring}`] : "—";
+    const escapementName = record.parts.escapement ? partNames[`escapement:${record.parts.escapement}`] : "—";
+    const pendulumName = record.parts.pendulum ? partNames[`pendulum:${record.parts.pendulum}`] : "—";
+
+    return `
+      <li class="history-item" style="animation-delay: ${index * 0.05}s">
+        <div class="history-job">
+          <span class="history-job-name">${record.jobName}</span>
+          <span class="history-score score-${record.score.toLowerCase()}">${record.score}</span>
+        </div>
+        <div class="history-error">误差：<strong>${record.error} 秒/日</strong></div>
+        <div class="history-parts">
+          <span>齿轮：<strong>${gearName}</strong></span>
+          <span>发条：<strong>${springName}</strong></span>
+          <span>擒纵：<strong>${escapementName}</strong></span>
+          <span>摆轮：<strong>${pendulumName}</strong></span>
+        </div>
+        <div class="history-tune">
+          <span>摆长：${record.lengthTune > 0 ? "+" : ""}${record.lengthTune}</span>
+          <span>咬合：${record.meshTune > 0 ? "+" : ""}${record.meshTune}</span>
+        </div>
+      </li>
+    `;
+  }).join("");
+}
+
 document.querySelectorAll(".parts button").forEach((button) => {
   button.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("text/plain", button.dataset.part);
@@ -208,6 +268,7 @@ document.querySelector("#testBtn").addEventListener("click", () => {
       clearInterval(testTimer);
       document.body.classList.remove("testing");
       estimateError(true);
+      addTestRecord();
     }
   }, 180);
 });
