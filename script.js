@@ -73,10 +73,27 @@ function updateSlots() {
   pendulum.style.animationDuration = `${swing}s`;
 }
 
+function clearFeedbackState(slot) {
+  const socket = document.querySelector(`[data-slot="${slot}"]`);
+  const slotRow = document.querySelector(`.installed [data-slot-row="${slot}"]`);
+  if (!socket || !slotRow) return;
+
+  socket.classList.remove("flash-in", "replacing");
+  slotRow.classList.remove("flash-in", "replacing");
+
+  const replaceBadge = slotRow.querySelector(".replace-badge");
+  if (replaceBadge) replaceBadge.classList.remove("show");
+
+  const socketReplaceBadge = socket.querySelector(".socket-replace-badge");
+  if (socketReplaceBadge) socketReplaceBadge.classList.remove("show");
+}
+
 function placePart(slot, value) {
   const oldValue = installed[slot];
   const isReplace = oldValue !== null && oldValue !== value;
   const oldName = isReplace ? partNames[`${slot}:${oldValue}`] : null;
+
+  if (oldValue === value) return;
 
   installed[slot] = value;
   const socket = document.querySelector(`[data-slot="${slot}"]`);
@@ -98,9 +115,8 @@ function triggerReplaceFeedback(slot, oldName, isReplace) {
 
   if (feedbackTimers[slot]) {
     clearTimeout(feedbackTimers[slot]);
-    socket.classList.remove("flash-in");
-    slotRow.classList.remove("flash-in");
   }
+  clearFeedbackState(slot);
 
   if (isReplace) {
     socket.classList.add("replacing");
@@ -119,10 +135,7 @@ function triggerReplaceFeedback(slot, oldName, isReplace) {
     }
 
     feedbackTimers[slot] = setTimeout(() => {
-      socket.classList.remove("replacing");
-      slotRow.classList.remove("replacing");
-      if (replaceBadge) replaceBadge.classList.remove("show");
-      if (socketReplaceBadge) socketReplaceBadge.classList.remove("show");
+      clearFeedbackState(slot);
       feedbackTimers[slot] = null;
     }, 1600);
   } else {
@@ -131,8 +144,7 @@ function triggerReplaceFeedback(slot, oldName, isReplace) {
     slotRow.classList.add("flash-in");
 
     feedbackTimers[slot] = setTimeout(() => {
-      socket.classList.remove("flash-in");
-      slotRow.classList.remove("flash-in");
+      clearFeedbackState(slot);
       feedbackTimers[slot] = null;
     }, 900);
   }
