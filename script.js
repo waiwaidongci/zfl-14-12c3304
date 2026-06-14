@@ -3,20 +3,20 @@ const JobData = {
   JOBS: [
     {
       name: "旧海军舱钟",
-      fault: "快走明显，发条输出不稳，摆轮偏短。目标误差小于每天18秒。",
-      targetMax: 18,
+      fault: "快走明显，发条输出不稳，摆轮偏短。",
+      acceptance: { maxError: 18, unit: "秒/日" },
       target: { gear: "balanced", spring: "steady", escapement: "clean", pendulum: "long" }
     },
     {
       name: "剧院后台挂钟",
-      fault: "慢走且齿轮磨损，擒纵需要清洁。目标误差小于每天22秒。",
-      targetMax: 22,
+      fault: "慢走且齿轮磨损，擒纵需要清洁。",
+      acceptance: { maxError: 22, unit: "秒/日" },
       target: { gear: "fast", spring: "steady", escapement: "clean", pendulum: "short" }
     },
     {
       name: "旅行黄铜闹钟",
-      fault: "运输后发条偏松，摆轮过长，齿轮需要更高传动比。目标误差小于每天20秒。",
-      targetMax: 20,
+      fault: "运输后发条偏松，摆轮过长，齿轮需要更高传动比。",
+      acceptance: { maxError: 20, unit: "秒/日" },
       target: { gear: "fast", spring: "tight", escapement: "clean", pendulum: "short" }
     }
   ],
@@ -142,7 +142,13 @@ const JobStore = {
     }
     const best = JobStore.jobBest[record.jobIndex];
     if (!best.score || record.error < best.error) {
-      JobStore.jobBest[record.jobIndex] = { score: record.score, error: record.error };
+      JobStore.jobBest[record.jobIndex] = {
+        score: record.score,
+        error: record.error,
+        accepted: record.accepted,
+        gap: record.gap,
+        targetMax: record.targetMax
+      };
     }
   }
 };
@@ -155,6 +161,7 @@ const dom = {
   jobList: $("#jobList"),
   jobName: $("#jobName"),
   jobFault: $("#jobFault"),
+  jobAcceptanceValue: $("#jobAcceptanceValue"),
   sockets: $$(".socket"),
   pendulum: $("#pendulum"),
   lengthTune: $("#lengthTune"),
@@ -175,14 +182,22 @@ const Renderer = {
     dom.jobList.innerHTML = JobData.JOBS.map((job, index) => {
       const isActive = index === JobStore.currentJobIndex;
       const best = JobStore.jobBest[index];
+      const accepted = best.score && best.error <= job.acceptance.maxError;
       const statusText = best.score
-        ? `最佳：${best.score}（${best.error}秒/日）`
+        ? accepted
+          ? `已完成 · ${best.score}（${best.error}秒/日）`
+          : `最佳：${best.score}（${best.error}秒/日）`
         : "未测试";
-      const statusClass = best.score ? "job-status-done" : "job-status-idle";
+      const statusClass = best.score
+        ? accepted
+          ? "job-status-completed"
+          : "job-status-done"
+        : "job-status-idle";
       return `
         <li class="job-list-item${isActive ? " active" : ""}" data-job-index="${index}" role="button" tabindex="0" aria-label="选择委托：${job.name}">
           <span class="job-list-item-name">${job.name}</span>
           <span class="job-list-item-fault">${job.fault}</span>
+          <span class="job-list-item-target">验收目标：≤${job.acceptance.maxError}${job.acceptance.unit}</span>
           <span class="job-list-item-status ${statusClass}">${statusText}</span>
           <button class="job-list-item-start" ${isActive ? 'disabled' : ''}>${isActive ? "修理中" : "开始修理"}</button>
         </li>
@@ -194,6 +209,7 @@ const Renderer = {
     const job = JobStore.getCurrentJob();
     dom.jobName.textContent = job.name;
     dom.jobFault.textContent = job.fault;
+    dom.jobAcceptanceValue.textContent = `≤${job.acceptance.maxError}${job.acceptance.unit}`;
   },
 
   slots() {
@@ -228,13 +244,32 @@ const Renderer = {
     });
   },
 
-  readouts(error, score) {
+  readouts(error, score, acceptance) {
     if (error === undefined || score === undefined) {
       dom.errorReadout.textContent = "--";
       dom.scoreReadout.textContent = "--";
+      const statusEl = $("#acceptanceStatus");
+      if (statusEl) statusEl.remove();
     } else {
       dom.errorReadout.textContent = `${error}秒/日`;
       dom.scoreReadout.textContent = score;
+
+      let statusEl = $("#acceptanceStatus");
+      if (!statusEl) {
+        statusEl = document.createElement("div");
+        statusEl.id = "acceptanceStatus";
+        dom.errorReadout.parentElement.parentElement.appendChild(statusEl);
+      }
+
+      if (acceptance) {
+        const { accepted, gap, targetMax } = acceptance;
+        statusEl.className = `acceptance-status ${accepted ? "accepted" : "rejected"}`;
+        if (accepted) {
+          statusEl.innerHTML = `<span class="status-icon">✓</span><span class="status-text">验收通过 · 误差≤${targetMax}秒/日</span>`;
+        } else {
+          statusEl.innerHTML = `<span class="status-icon">✗</span><span class="status-text">未达成目标 · 还差 ${gap} 秒/日</span>`;
+        }
+      }
     }
   },
 
@@ -255,11 +290,21 @@ const Renderer = {
       const escapementName = record.parts.escapement ? JobData.getPartName("escapement", record.parts.escapement) : "—";
       const pendulumName = record.parts.pendulum ? JobData.getPartName("pendulum", record.parts.pendulum) : "—";
 
+      const acceptedClass = record.accepted ? "history-accepted" : "history-rejected";
+      const acceptedIcon = record.accepted ? "✓" : "✗";
+      const acceptedText = record.accepted
+        ? `验收通过 · ≤${record.targetMax}秒/日`
+        : `未通过 · 还差 ${record.gap} 秒/日`;
+
       return `
-        <li class="history-item" style="animation-delay: ${index * 0.05}s">
+        <li class="history-item ${acceptedClass}" style="animation-delay: ${index * 0.05}s">
           <div class="history-job">
             <span class="history-job-name">${record.jobName}</span>
             <span class="history-score score-${record.score.toLowerCase()}">${record.score}</span>
+          </div>
+          <div class="history-acceptance">
+            <span class="history-acceptance-icon">${acceptedIcon}</span>
+            <span class="history-acceptance-text">${acceptedText}</span>
           </div>
           <div class="history-error">误差：<strong>${record.error} 秒/日</strong></div>
           <div class="history-parts">
@@ -458,9 +503,14 @@ const Handler = {
         const abs = JobStore.calcError(testSnapshot);
         const tier = JobData.getTier(abs);
         const score = tier.grade;
-        Renderer.readouts(abs, score);
 
         const job = JobData.JOBS[testSnapshot.jobIndex];
+        const targetMax = job.acceptance.maxError;
+        const accepted = abs <= targetMax;
+        const gap = abs - targetMax;
+
+        Renderer.readouts(abs, score, { accepted, gap, targetMax });
+
         const record = {
           jobName: job.name,
           parts: { ...testSnapshot.installed },
@@ -469,7 +519,10 @@ const Handler = {
           error: abs,
           score: score,
           jobIndex: testSnapshot.jobIndex,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          accepted: accepted,
+          gap: gap,
+          targetMax: targetMax
         };
         JobStore.addTestRecord(record);
 
@@ -510,6 +563,7 @@ const ManualRenderer = {
     const job = JobStore.getCurrentJob();
     $("#adviceJobName").textContent = job.name;
     $("#adviceJobFault").textContent = job.fault;
+    $("#adviceAcceptanceValue").textContent = `≤${job.acceptance.maxError}${job.acceptance.unit}`;
 
     const targetList = $("#adviceTargetList");
     targetList.innerHTML = Object.entries(job.target)
@@ -863,7 +917,7 @@ const Diagnostics = {
       };
     }
 
-    if (absError <= job.targetMax) {
+    if (absError <= job.acceptance.maxError) {
       if (lengthTune === 0 && meshTune === 0) {
         return {
           type: "good",
