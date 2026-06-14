@@ -603,6 +603,117 @@ input[type="range"].is-disabled {
   filter: grayscale(0.3);
 }
 
+.diagnostics {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 250, 241, 0.72);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.diagnose-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--steel);
+  border-radius: 6px;
+  color: white;
+  background: var(--steel);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.2s, transform 0.1s;
+}
+
+.diagnose-btn:hover:not(:disabled):not(.is-disabled) {
+  background: #3f5364;
+}
+
+.diagnose-btn:disabled,
+.diagnose-btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #5a4f42;
+}
+
+.diagnose-btn svg {
+  flex-shrink: 0;
+}
+
+.diagnostic-tip {
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.55;
+  background: rgba(122, 110, 93, 0.08);
+  border-left: 3px solid var(--muted);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.diagnostic-tip:empty {
+  padding: 0;
+  border: none;
+  background: transparent;
+  min-height: 0;
+}
+
+.diagnostic-tip.diagnostic-info {
+  background: rgba(83, 104, 121, 0.1);
+  border-left-color: var(--steel);
+  color: var(--steel);
+}
+
+.diagnostic-tip.diagnostic-warn {
+  background: rgba(200, 154, 69, 0.15);
+  border-left-color: var(--brass);
+  color: #8a6a2f;
+}
+
+.diagnostic-tip.diagnostic-error {
+  background: rgba(159, 69, 69, 0.1);
+  border-left-color: var(--ruby);
+  color: var(--ruby);
+}
+
+.diagnostic-tip.diagnostic-good {
+  background: rgba(92, 148, 110, 0.12);
+  border-left-color: #5c946e;
+  color: #4b7a5c;
+}
+
+.diagnostic-tip .tip-icon {
+  font-size: 18px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.diagnostic-tip .tip-text {
+  flex: 1;
+}
+
+@keyframes tipReveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.diagnostic-tip:not(:empty) {
+  animation: tipReveal 0.3s ease;
+}
+
 .test {
   display: grid;
   gap: 12px;
