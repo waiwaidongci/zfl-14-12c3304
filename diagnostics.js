@@ -1,16 +1,6 @@
 window.Diagnostics = {
   calcTheoreticalError() {
-    const snap = JobStore.snapshot();
-    const job = JobData.JOBS[snap.jobIndex];
-    let error = 0;
-    Object.entries(job.target).forEach(([slot, wanted]) => {
-      const value = snap.installed[slot];
-      if (!value) error += slot === "escapement" ? 42 : 34;
-      else error += Math.abs(JobData.PART_EFFECT[slot][value] - JobData.PART_EFFECT[slot][wanted]);
-    });
-    error += snap.lengthTune * -3;
-    error += snap.meshTune * 2.2;
-    return error;
+    return JobStore.calcTheoreticalError();
   },
 
   analyze() {

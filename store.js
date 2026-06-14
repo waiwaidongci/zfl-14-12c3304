@@ -55,16 +55,28 @@ window.JobStore = {
   calcError(snapshot) {
     const snap = snapshot || JobStore.snapshot();
     const job = JobData.JOBS[snap.jobIndex];
-    let error = 0;
-    Object.entries(job.target).forEach(([slot, wanted]) => {
-      const value = snap.installed[slot];
-      if (!value) error += slot === "escapement" ? 42 : 34;
-      else error += Math.abs(JobData.PART_EFFECT[slot][value] - JobData.PART_EFFECT[slot][wanted]);
+    const jitter = Math.round((Math.random() - 0.5) * 5);
+    const result = CalcEngine.calcWithJitter({
+      installed: snap.installed,
+      target: job.target,
+      lengthTune: snap.lengthTune,
+      meshTune: snap.meshTune,
+      partEffect: JobData.PART_EFFECT
+    }, jitter);
+    return result.finalAbs;
+  },
+
+  calcTheoreticalError(snapshot) {
+    const snap = snapshot || JobStore.snapshot();
+    const job = JobData.JOBS[snap.jobIndex];
+    const result = CalcEngine.calcTheoretical({
+      installed: snap.installed,
+      target: job.target,
+      lengthTune: snap.lengthTune,
+      meshTune: snap.meshTune,
+      partEffect: JobData.PART_EFFECT
     });
-    error += snap.lengthTune * -3;
-    error += snap.meshTune * 2.2;
-    error += Math.round((Math.random() - 0.5) * 5);
-    return Math.abs(Math.round(error));
+    return result.rawTotal;
   },
 
   addTestRecord(record) {

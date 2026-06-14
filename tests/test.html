@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>微型制钟师 · 测试</title>
+    <style>
+      :root {
+        --pass: #2ecc71;
+        --fail: #e74c3c;
+        --bg: #0f172a;
+        --panel: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      .sub { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
+      .summary {
+        display: flex;
+        gap: 16px;
+        padding: 16px 20px;
+        background: var(--panel);
+        border-radius: 10px;
+        margin-bottom: 24px;
+        align-items: center;
+      }
+      .summary .stat {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .summary .num { font-size: 26px; font-weight: 700; }
+      .summary .pass .num { color: var(--pass); }
+      .summary .fail .num { color: var(--fail); }
+      .summary .label { color: var(--muted); font-size: 12px; }
+      .summary .overall {
+        margin-left: auto;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+      }
+      .summary .overall.ok { background: var(--pass); color: #052e16; }
+      .summary .overall.ng { background: var(--fail); color: #3f0a0a; }
+      .groups {
+        display: grid;
+        gap: 16px;
+      }
+      .group {
+        background: var(--panel);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .group h2 {
+        margin: 0;
+        padding: 12px 20px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--accent);
+        border-bottom: 1px solid #334155;
+      }
+      .case {
+        padding: 10px 20px;
+        display: grid;
+        grid-template-columns: 22px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(148,163,184,0.06);
+      }
+      .case:last-child { border-bottom: none; }
+      .icon {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .icon.p { background: var(--pass); color: #052e16; }
+      .icon.f { background: var(--fail); color: #3f0a0a; }
+      .name { font-family: inherit; }
+      .val {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .val.fail-val { color: var(--fail); max-width: 460px; text-align: right; white-space: pre-line; }
+      .actions {
+        margin-top: 24px;
+        display: flex;
+        gap: 10px;
+      }
+      button {
+        background: var(--accent);
+        color: #0b2447;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+        font-family: inherit;
+      }
+      button:hover { filter: brightness(1.1); }
+      a {
+        color: var(--accent);
+        font-size: 12px;
+        align-self: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>微型制钟师 · 误差与评分单元测试</h1>
+    <div class="sub">纯计算模块 CalcEngine 浏览器端自检</div>
+
+    <div id="summary" class="summary">
+      <div class="stat pass"><span class="num" id="passNum">0</span><span class="label">通过</span></div>
+      <div class="stat fail"><span class="num" id="failNum">0</span><span class="label">失败</span></div>
+      <div id="overall" class="overall ok">运行中…</div>
+    </div>
+
+    <div id="groups" class="groups"></div>
+
+    <div class="actions">
+      <button onclick="location.reload()">重新运行</button>
+      <a href="../index.html">← 返回游戏</a>
+    </div>
+
+    <script src="../calc.js"></script>
+    <script>
+    (function () {
+      "use strict";
+
+      const PART_EFFECT = CalcEngine.DEFAULT_PART_EFFECT;
+      const TIERS = CalcEngine.DEFAULT_TIERS;
+
+      const JOB_TARGETS = {
+        navy: { gear: "balanced", spring: "steady", escapement: "clean", pendulum: "long" },
+        theatre: { gear: "fast", spring: "steady", escapement: "clean", pendulum: "short" },
+        travel: { gear: "fast", spring: "tight", escapement: "clean", pendulum: "short" }
+      };
+
+      const GROUPS = [];
+      function group(name) {
+        const g = { name, cases: [] };
+        GROUPS.push(g);
+        return g;
+      }
+      function t(g, name, fn) { g.cases.push({ name, fn }); }
+
+      function eq(a, b, m) {
+        if (a !== b) throw new Error((m || "") + ` — expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+      }
+      function approx(a, b, eps, m) {
+        const e = eps === undefined ? 1e-9 : eps;
+        if (Math.abs(a - b) > e) throw new Error((m || "") + ` — expected ≈${b}, got ${a}`);
+      }
+
+      // ── 用例定义（与 calc.test.js 保持一致） ──────────────
+      (function define() {
+        let g;
+
+        g = group("常量");
+        t(g, "罚分系数与微调系数", () => {
+          eq(CalcEngine.CONSTANTS.ESCAPEMENT_PENALTY, 42);
+          eq(CalcEngine.CONSTANTS.OTHER_PENALTY, 34);
+          eq(CalcEngine.CONSTANTS.LENGTH_COEFF, -3);
+          eq(CalcEngine.CONSTANTS.MESH_COEFF, 2.2);
+        });
+        t(g, "DEFAULT_PART_EFFECT 结构完整", () => {
+          eq(typeof PART_EFFECT.gear.balanced, "number");
+          eq(typeof PART_EFFECT.pendulum.short, "number");
+        });
+
+        g = group("目标零件全匹配");
+        t(g, "海军舱钟：零零件误差", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy,
+            lengthTune: 0, meshTune: 0, partEffect: PART_EFFECT
+          });
+          eq(r.partsError, 0); eq(r.theoreticalAbs, 0);
+        });
+        t(g, "剧院后台挂钟：零零件误差", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.theatre }, target: JOB_TARGETS.theatre
+          });
+          eq(r.partsError, 0); eq(r.theoreticalAbs, 0);
+        });
+
+        g = group("缺失零件罚分");
+        t(g, "四件全空：擒纵42 + 其他34×3 = 144", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { gear: null, spring: null, escapement: null, pendulum: null },
+            target: JOB_TARGETS.navy
+          });
+          eq(r.breakdown.escapement.slotError, 42);
+          eq(r.breakdown.gear.slotError, 34);
+          eq(r.breakdown.spring.slotError, 34);
+          eq(r.breakdown.pendulum.slotError, 34);
+          eq(r.partsError, 144);
+        });
+        t(g, "仅擒纵空：42", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { gear: "balanced", spring: "steady", escapement: null, pendulum: "long" },
+            target: JOB_TARGETS.navy
+          });
+          eq(r.partsError, 42);
+        });
+        t(g, "仅摆轮空：34", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { gear: "balanced", spring: "steady", escapement: "clean", pendulum: null },
+            target: JOB_TARGETS.navy
+          });
+          eq(r.partsError, 34);
+        });
+
+        g = group("错误零件误差");
+        t(g, "齿轮 balanced vs fast → 18", () =>
+          eq(CalcEngine.calcSlotError("gear", "fast", "balanced", PART_EFFECT), 18));
+        t(g, "发条 steady vs tight → 16", () =>
+          eq(CalcEngine.calcSlotError("spring", "tight", "steady", PART_EFFECT), 16));
+        t(g, "擒纵 clean vs worn → 28", () =>
+          eq(CalcEngine.calcSlotError("escapement", "worn", "clean", PART_EFFECT), 28));
+        t(g, "摆轮 long vs short → 36", () =>
+          eq(CalcEngine.calcSlotError("pendulum", "short", "long", PART_EFFECT), 36));
+        t(g, "海军目标装成剧院零件：总 54", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.theatre }, target: JOB_TARGETS.navy
+          });
+          eq(r.partsError, 54);
+        });
+
+        g = group("摆长微调（-3/格）");
+        t(g, "每格 -3 秒", () => {
+          approx(CalcEngine.calcTuneError(1, 0), -3);
+          approx(CalcEngine.calcTuneError(-1, 0), 3);
+          approx(CalcEngine.calcTuneError(8, 0), -24);
+        });
+        t(g, "全匹配 + 摆长 +2 → abs 6", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy,
+            lengthTune: 2, meshTune: 0
+          });
+          eq(r.theoreticalAbs, 6);
+        });
+        t(g, "全匹配 + 摆长 -8 → abs 24", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy,
+            lengthTune: -8, meshTune: 0
+          });
+          eq(r.theoreticalAbs, 24);
+        });
+
+        g = group("咬合微调（+2.2/格）");
+        t(g, "每格 +2.2 秒", () => {
+          approx(CalcEngine.calcTuneError(0, 1), 2.2);
+          approx(CalcEngine.calcTuneError(0, -1), -2.2);
+          approx(CalcEngine.calcTuneError(0, 5), 11);
+        });
+        t(g, "全匹配 + 咬合 +5 → 11", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy,
+            lengthTune: 0, meshTune: 5
+          });
+          eq(r.theoreticalAbs, 11);
+        });
+        t(g, "咬合 +1 = 2.2 → round 后 2", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy,
+            lengthTune: 0, meshTune: 1
+          });
+          eq(r.theoreticalAbs, 2);
+        });
+
+        g = group("综合：零件+微调");
+        t(g, "旅行钟全匹配 + 摆长+3 咬合-2 → 13", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.travel }, target: JOB_TARGETS.travel,
+            lengthTune: 3, meshTune: -2
+          });
+          eq(r.theoreticalAbs, 13);
+        });
+        t(g, "擒纵空(42) + 摆长6格(-18) → 24", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { gear: "balanced", spring: "steady", escapement: null, pendulum: "long" },
+            target: JOB_TARGETS.navy, lengthTune: 6, meshTune: 0
+          });
+          eq(r.theoreticalAbs, 24);
+        });
+
+        g = group("随机扰动层");
+        t(g, "全匹配 + 扰动 +2 → 最终 2", () => {
+          const r = CalcEngine.calcWithJitter({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy
+          }, 2);
+          eq(r.jitter, 2); eq(r.finalAbs, 2);
+        });
+        t(g, "全匹配 + 扰动 -2 → abs 2", () => {
+          const r = CalcEngine.calcWithJitter({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy
+          }, -2);
+          eq(r.finalAbs, 2);
+        });
+        t(g, "齿轮误差 18 + 扰动 -2 → 16", () => {
+          const r = CalcEngine.calcWithJitter({
+            installed: { gear: "fast", spring: "steady", escapement: "clean", pendulum: "long" },
+            target: JOB_TARGETS.navy
+          }, -2);
+          eq(r.finalAbs, 16);
+        });
+
+        g = group("评分档位边界");
+        const tierCases = [
+          [0, "S"], [12, "S"], [13, "A"], [22, "A"], [23, "B"],
+          [38, "B"], [39, "C"], [58, "C"], [59, "D"], [9999, "D"], [-38, "B"]
+        ];
+        tierCases.forEach(([v, g2]) =>
+          t(g, `误差 ${v} → ${g2}`, () => eq(CalcEngine.getTier(v).grade, g2))
+        );
+
+        g = group("验收判定与 gap");
+        t(g, "海军目标 18：误差 17 → 通过 gap -1", () => {
+          eq(CalcEngine.isAccepted(17, 18), true);
+          eq(CalcEngine.acceptanceGap(17, 18), -1);
+        });
+        t(g, "边界 18 → 通过 gap 0", () => {
+          eq(CalcEngine.isAccepted(18, 18), true);
+          eq(CalcEngine.acceptanceGap(18, 18), 0);
+        });
+        t(g, "误差 19 → 未通过 gap 1", () => {
+          eq(CalcEngine.isAccepted(19, 18), false);
+          eq(CalcEngine.acceptanceGap(19, 18), 1);
+        });
+        t(g, "负值取绝对值：-20 vs 22 → 通过", () =>
+          eq(CalcEngine.isAccepted(-20, 22), true));
+
+        g = group("evaluateTest 综合");
+        t(g, "海军全匹配 → S / 通过", () => {
+          const r = CalcEngine.evaluateTest({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy
+          }, { targetMax: 18, tiers: TIERS });
+          eq(r.errorAbs, 0); eq(r.tier, "S"); eq(r.accepted, true);
+        });
+        t(g, "剧院钟 + 摆长5 咬合1 → 误差13 / A / 通过", () => {
+          const r = CalcEngine.evaluateTest({
+            installed: { ...JOB_TARGETS.theatre }, target: JOB_TARGETS.theatre,
+            lengthTune: 5, meshTune: 1
+          }, { targetMax: 22 });
+          eq(r.errorAbs, 13); eq(r.tier, "A"); eq(r.accepted, true);
+        });
+        t(g, "全空装配 → D / 未通过 gap 126", () => {
+          const r = CalcEngine.evaluateTest({
+            installed: { gear: null, spring: null, escapement: null, pendulum: null },
+            target: JOB_TARGETS.navy
+          }, { targetMax: 18 });
+          eq(r.errorAbs, 144); eq(r.tier, "D"); eq(r.accepted, false); eq(r.gap, 126);
+        });
+        t(g, "jitter 注入：全匹配 + jitter 2 → 误差 2", () => {
+          const r = CalcEngine.evaluateTest({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy
+          }, { jitter: 2, targetMax: 18 });
+          eq(r.errorAbs, 2); eq(r.jitter, 2);
+        });
+
+        g = group("防御性与边界");
+        t(g, "未知零件 resolve 为 0", () => {
+          eq(CalcEngine.resolvePartEffect("gear", "unknown"), 0);
+          eq(CalcEngine.resolvePartEffect("unknown_slot", "balanced"), 0);
+        });
+        t(g, "calcTheoretical 缺省 tuning 为 0", () => {
+          const r = CalcEngine.calcTheoretical({
+            installed: { ...JOB_TARGETS.navy }, target: JOB_TARGETS.navy
+          });
+          eq(r.tuneError, 0);
+        });
+        t(g, "installed 空对象 → 全缺失", () => {
+          const r = CalcEngine.calcTheoretical({ installed: {}, target: JOB_TARGETS.navy });
+          eq(r.partsError, 144);
+        });
+        t(g, "无参数调用不抛错", () => {
+          const r = CalcEngine.calcTheoretical();
+          eq(r.partsError, 0); eq(r.tuneError, 0);
+        });
+      })();
+
+      // ── 执行 ──────────────────────────────────────────
+      let passed = 0, failed = 0;
+      const groupsEl = document.getElementById("groups");
+
+      GROUPS.forEach((grp) => {
+        const section = document.createElement("section");
+        section.className = "group";
+        const h = document.createElement("h2");
+        h.textContent = grp.name;
+        section.appendChild(h);
+
+        grp.cases.forEach((c) => {
+          const row = document.createElement("div");
+          row.className = "case";
+          const icon = document.createElement("div");
+          const name = document.createElement("div");
+          name.className = "name";
+          name.textContent = c.name;
+          const val = document.createElement("div");
+          val.className = "val";
+
+          let ok = false, errMsg = "";
+          try {
+            c.fn();
+            ok = true; passed++;
+          } catch (e) {
+            failed++; errMsg = e.message || String(e);
+          }
+
+          icon.className = "icon " + (ok ? "p" : "f");
+          icon.textContent = ok ? "✓" : "✗";
+          if (!ok) {
+            val.className = "val fail-val";
+            val.textContent = errMsg;
+          } else {
+            val.textContent = "通过";
+          }
+
+          row.appendChild(icon);
+          row.appendChild(name);
+          row.appendChild(val);
+          section.appendChild(row);
+        });
+        groupsEl.appendChild(section);
+      });
+
+      document.getElementById("passNum").textContent = passed;
+      document.getElementById("failNum").textContent = failed;
+      const overall = document.getElementById("overall");
+      if (failed === 0) {
+        overall.className = "overall ok";
+        overall.textContent = `✓ 全部通过（${passed} 项）`;
+      } else {
+        overall.className = "overall ng";
+        overall.textContent = `✗ ${failed} 项失败`;
+      }
+    })();
+    </script>
+  </body>
+</html>

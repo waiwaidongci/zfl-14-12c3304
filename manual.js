@@ -120,34 +120,31 @@ window.ManualRenderer = {
   renderCalcPanel() {
     const job = JobStore.getCurrentJob();
     const calcGrid = $("#calcGrid");
-    let totalError = 0;
-    let rowsHtml = "";
 
-    Object.entries(job.target).forEach(([slot, wanted]) => {
-      const current = JobStore.installed[slot];
-      let errorVal;
+    const breakdown = CalcEngine.calcPartsBreakdown(JobStore.installed, job.target, JobData.PART_EFFECT);
+    const totalError = CalcEngine.calcPartsErrorTotal(breakdown);
+
+    let rowsHtml = "";
+    Object.entries(breakdown).forEach(([slot, b]) => {
       let partText;
       let rowClass = "";
 
-      if (!current) {
-        errorVal = slot === "escapement" ? 42 : 34;
+      if (b.missing) {
         partText = "（空 — 罚分）";
         rowClass = "calc-empty";
       } else {
-        errorVal = Math.abs(JobData.PART_EFFECT[slot][current] - JobData.PART_EFFECT[slot][wanted]);
-        partText = JobData.getPartName(slot, current);
+        partText = JobData.getPartName(slot, b.installed);
       }
 
-      totalError += errorVal;
-      const wantedName = JobData.getPartName(slot, wanted);
-      const cls = errorVal > 0 ? "effect-pos" : "";
-      const sign = errorVal > 0 ? "+" : "";
+      const wantedName = JobData.getPartName(slot, b.target);
+      const cls = b.slotError > 0 ? "effect-pos" : "";
+      const sign = b.slotError > 0 ? "+" : "";
 
       rowsHtml += `<div class="calc-row ${rowClass}">
         <span class="calc-slot">${JobData.SLOT_LABELS[slot]}</span>
         <span class="calc-part">${partText}</span>
         <span class="calc-target">目标：${wantedName}</span>
-        <span class="calc-error ${cls}">${sign}${errorVal}</span>
+        <span class="calc-error ${cls}">${sign}${b.slotError}</span>
       </div>`;
     });
 
@@ -166,7 +163,7 @@ window.ManualRenderer = {
       calcLength.value = tuneL;
       calcMesh.value = tuneM;
 
-      const tuneError = tuneL * -3 + tuneM * 2.2;
+      const tuneError = CalcEngine.calcTuneError(tuneL, tuneM);
       const rawTotal = totalError + tuneError;
       const absTotal = Math.abs(Math.round(rawTotal));
 
