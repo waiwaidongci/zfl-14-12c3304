@@ -14,6 +14,10 @@
             <p>Atelier Horologe</p>
             <h1>微型制钟师</h1>
           </div>
+          <div class="mode-switch">
+            <button class="mode-btn active" data-mode="free">自由修理</button>
+            <button class="mode-btn" data-mode="daily">每日工坊挑战</button>
+          </div>
         </header>
 
         <div class="clock-shell">
@@ -41,10 +45,26 @@
       </section>
 
       <aside class="side">
-        <section class="commission-board">
-          <h2>可接委托</h2>
-          <ul id="jobList" class="job-list"></ul>
-        </section>
+          <section class="daily-challenge" id="dailyChallenge" style="display:none;">
+            <header class="challenge-header">
+              <h2>每日工坊挑战</h2>
+              <span class="challenge-date" id="challengeDate"></span>
+            </header>
+            <div class="challenge-score">
+              <span>今日总评分</span>
+              <strong id="challengeTotalScore">--</strong>
+            </div>
+            <ul class="challenge-jobs" id="challengeJobs"></ul>
+            <section class="inventory">
+              <h3>今日零件库存</h3>
+              <div class="inventory-grid" id="inventoryGrid"></div>
+            </section>
+          </section>
+
+          <section class="commission-board" id="commissionBoard">
+            <h2>可接委托</h2>
+            <ul id="jobList" class="job-list"></ul>
+          </section>
 
         <section class="job active-job">
           <h2 id="jobName">旧海军舱钟</h2>

@@ -17,5 +17,13 @@ window.dom = {
   partButtons: $$(".parts button"),
   manualOverlay: $("#manualOverlay"),
   diagnoseBtn: $("#diagnoseBtn"),
-  diagnosticTip: $("#diagnosticTip")
+  diagnosticTip: $("#diagnosticTip"),
+
+  modeButtons: $$(".mode-btn"),
+  dailyChallenge: $("#dailyChallenge"),
+  commissionBoard: $("#commissionBoard"),
+  challengeDate: $("#challengeDate"),
+  challengeTotalScore: $("#challengeTotalScore"),
+  challengeJobs: $("#challengeJobs"),
+  inventoryGrid: $("#inventoryGrid")
 };

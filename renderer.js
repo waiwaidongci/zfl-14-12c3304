@@ -1,5 +1,25 @@
 window.Renderer = {
+  modeButtons() {
+    dom.modeButtons.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.mode === JobStore.mode);
+    });
+  },
+
+  modePanels() {
+    if (JobStore.mode === "daily") {
+      dom.dailyChallenge.style.display = "grid";
+      dom.commissionBoard.style.display = "none";
+    } else {
+      dom.dailyChallenge.style.display = "none";
+      dom.commissionBoard.style.display = "block";
+    }
+  },
+
   jobList() {
+    if (JobStore.mode === "daily") {
+      return;
+    }
+
     dom.jobList.innerHTML = JobData.JOBS.map((job, index) => {
       const isActive = index === JobStore.currentJobIndex;
       const best = JobStore.jobBest[index];
@@ -24,6 +44,109 @@ window.Renderer = {
         </li>
       `;
     }).join("");
+  },
+
+  challengeJobs() {
+    if (JobStore.mode !== "daily" || !JobStore.dailyChallenge) return;
+
+    const jobsHtml = JobStore.dailyChallenge.jobs.map((job, index) => {
+      const isActive = index === JobStore.currentChallengeJobIndex;
+      const result = JobStore.challengeJobResults[index];
+      const canStart = JobStore.canStartChallengeJob(index);
+      const isCompleted = result && result.accepted;
+      const isAttempted = result && !result.accepted;
+      const isLocked = !canStart;
+
+      let classes = "challenge-job-item";
+      if (isActive) classes += " active";
+      if (isCompleted) classes += " completed";
+      if (isAttempted) classes += " attempted";
+      if (isLocked) classes += " locked";
+      if (JobStore.isTesting) classes += " is-disabled";
+
+      let resultHtml = "";
+      if (result) {
+        const statusIcon = result.accepted ? "✓" : "✗";
+        const statusClass = result.accepted ? "history-accepted" : "history-rejected";
+        resultHtml = `
+          <div class="challenge-job-result">
+            <span class="challenge-result-icon ${statusClass}">${statusIcon}</span>
+            <span class="challenge-score-badge score-${result.score.toLowerCase()}">${result.score}</span>
+            <span class="challenge-result-error">误差：<strong>${result.error}</strong> 秒/日</span>
+          </div>
+        `;
+      }
+
+      return `
+        <li class="${classes}" data-challenge-index="${index}" role="button" tabindex="${isLocked ? "-1" : "0"}" aria-label="${isLocked ? "锁定" : "选择"}挑战委托：${job.name}">
+          <span class="challenge-job-order">${index + 1}</span>
+          <span class="challenge-job-name">${job.name}</span>
+          <span class="challenge-job-fault">${job.fault}</span>
+          <span class="challenge-job-target">验收目标：≤${job.acceptance.maxError}${job.acceptance.unit}</span>
+          ${resultHtml}
+        </li>
+      `;
+    }).join("");
+
+    const doneHtml = JobStore.isChallengeComplete()
+      ? `<li class="challenge-all-done">今日挑战全部完成！总分 ${JobStore.getChallengeTotalScore()}</li>`
+      : "";
+
+    dom.challengeJobs.innerHTML = `${jobsHtml}${doneHtml}`;
+  },
+
+  inventory() {
+    if (JobStore.mode !== "daily") return;
+
+    dom.inventoryGrid.innerHTML = JobData.ALL_PARTS.map(partKey => {
+      const count = JobStore.getPartStock(partKey);
+      const name = JobData.getPartFullName(partKey);
+      const outOfStock = count <= 0;
+      return `
+        <div class="inventory-item${outOfStock ? " out-of-stock" : ""}" data-part="${partKey}">
+          <span class="inventory-part-name">${name}</span>
+          <span class="inventory-count">${count}</span>
+        </div>
+      `;
+    }).join("");
+  },
+
+  challengeScore() {
+    if (JobStore.mode !== "daily") return;
+    const total = JobStore.getChallengeTotalScore();
+    dom.challengeTotalScore.textContent = total > 0 ? total : "--";
+  },
+
+  challengeDate() {
+    if (JobStore.mode !== "daily") return;
+    const today = JobData.getDateString();
+    dom.challengeDate.textContent = today;
+  },
+
+  partButtons() {
+    dom.partButtons.forEach(btn => {
+      const partKey = btn.dataset.part;
+      const stock = JobStore.getPartStock(partKey);
+      const outOfStock = JobStore.mode === "daily" && stock <= 0;
+
+      btn.classList.toggle("out-of-stock", outOfStock);
+      btn.disabled = outOfStock || JobStore.isTesting;
+      btn.classList.toggle("is-disabled", outOfStock || JobStore.isTesting);
+
+      let stockBadge = btn.querySelector(".part-stock");
+      if (JobStore.mode === "daily") {
+        if (!stockBadge) {
+          stockBadge = document.createElement("span");
+          stockBadge.className = "part-stock";
+          btn.appendChild(stockBadge);
+        }
+        stockBadge.textContent = `x${stock}`;
+      } else {
+        if (stockBadge) {
+          stockBadge.remove();
+        }
+      }
+    });
   },
 
   currentJob() {
@@ -100,12 +223,13 @@ window.Renderer = {
   },
 
   testHistory() {
-    if (JobStore.testHistory.length === 0) {
+    const history = JobStore.getTestHistory();
+    if (history.length === 0) {
       dom.historyList.innerHTML = '<li class="history-empty">暂无测试记录</li>';
       return;
     }
 
-    dom.historyList.innerHTML = JobStore.testHistory.map((record, index) => {
+    dom.historyList.innerHTML = history.map((record, index) => {
       const gearName = record.parts.gear ? JobData.getPartName("gear", record.parts.gear) : "—";
       const springName = record.parts.spring ? JobData.getPartName("spring", record.parts.spring) : "—";
       const escapementName = record.parts.escapement ? JobData.getPartName("escapement", record.parts.escapement) : "—";
@@ -144,12 +268,22 @@ window.Renderer = {
   },
 
   fullWorkspace() {
+    Renderer.modeButtons();
+    Renderer.modePanels();
     Renderer.currentJob();
     Renderer.clockSockets();
     Renderer.slots();
     Renderer.readouts();
     Renderer.tuningControls();
     Renderer.jobList();
+    Renderer.partButtons();
+
+    if (JobStore.mode === "daily") {
+      Renderer.challengeDate();
+      Renderer.challengeScore();
+      Renderer.challengeJobs();
+      Renderer.inventory();
+    }
   },
 
   testingControls(disabled) {
@@ -160,13 +294,12 @@ window.Renderer = {
       item.setAttribute("aria-disabled", String(disabled));
     });
 
-    dom.partButtons.forEach((btn) => {
-      btn.disabled = disabled;
-      btn.classList.toggle("is-disabled", disabled);
-      btn.setAttribute("aria-disabled", String(disabled));
-      if (disabled) btn.removeAttribute("draggable");
-      else btn.setAttribute("draggable", "true");
+    dom.challengeJobs.querySelectorAll(".challenge-job-item").forEach((item) => {
+      item.classList.toggle("is-disabled", disabled);
+      item.setAttribute("aria-disabled", String(disabled));
     });
+
+    Renderer.partButtons();
 
     dom.sockets.forEach((socket) => {
       socket.classList.toggle("is-disabled", disabled);
@@ -265,6 +398,18 @@ window.Renderer = {
         Renderer.clearFeedbackState(slot);
         JobStore.feedbackTimers[slot] = null;
       }, 900);
+    }
+  },
+
+  highlightInventory(partKey) {
+    const item = dom.inventoryGrid.querySelector(`[data-part="${partKey}"]`);
+    if (item) {
+      item.classList.remove("highlight");
+      void item.offsetWidth;
+      item.classList.add("highlight");
+      setTimeout(() => {
+        item.classList.remove("highlight");
+      }, 600);
     }
   },
 

@@ -1622,3 +1622,375 @@ input[type="range"].is-disabled {
     flex-direction: column;
   }
 }
+
+.mode-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(33, 28, 25, 0.08);
+  border-radius: 8px;
+}
+
+.mode-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mode-btn:hover:not(.active) {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.mode-btn.active {
+  background: var(--ink);
+  color: white;
+  box-shadow: 0 2px 6px rgba(33, 28, 25, 0.3);
+}
+
+.daily-challenge {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 250, 241, 0.72);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.challenge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.challenge-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.challenge-header h2::before {
+  content: "🏆";
+  font-size: 14px;
+}
+
+.challenge-date {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 3px 8px;
+  background: rgba(122, 110, 93, 0.1);
+  border-radius: 4px;
+}
+
+.challenge-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--ink);
+  color: white;
+  border-radius: 6px;
+}
+
+.challenge-score span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.challenge-score strong {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.challenge-jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.challenge-job-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff8ec;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.challenge-job-item:hover:not(.completed):not(.locked):not(.is-disabled) {
+  background: #fff1d6;
+  border-color: var(--brass);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(34, 24, 16, 0.08);
+}
+
+.challenge-job-item.active {
+  background: rgba(200, 154, 69, 0.15);
+  border-color: var(--brass);
+  box-shadow: inset 0 0 0 1px var(--brass);
+}
+
+.challenge-job-item.completed {
+  opacity: 0.75;
+  background: rgba(92, 148, 110, 0.08);
+  border-color: rgba(92, 148, 110, 0.3);
+}
+
+.challenge-job-item.attempted {
+  background: rgba(184, 84, 84, 0.06);
+  border-color: rgba(184, 84, 84, 0.25);
+}
+
+.challenge-job-item.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(122, 110, 93, 0.06);
+}
+
+.challenge-job-item.locked::after {
+  content: "🔒";
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 14px;
+}
+
+.challenge-job-item.is-disabled {
+  pointer-events: none;
+}
+
+.challenge-job-order {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--ruby);
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 2px 4px rgba(159, 69, 69, 0.3);
+}
+
+.challenge-job-item.completed .challenge-job-order {
+  background: #5c946e;
+}
+
+.challenge-job-item.attempted .challenge-job-order {
+  background: #b85454;
+}
+
+.challenge-job-name {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink);
+  padding-right: 24px;
+}
+
+.challenge-job-fault {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.challenge-job-target {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brass);
+  padding: 2px 6px;
+  background: rgba(200, 154, 69, 0.1);
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.challenge-job-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.challenge-job-result .challenge-result-icon {
+  font-size: 12px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.challenge-job-result .challenge-result-icon.history-accepted {
+  background: rgba(92, 148, 110, 0.15);
+  color: #5c946e;
+}
+
+.challenge-job-result .challenge-result-icon.history-rejected {
+  background: rgba(184, 84, 84, 0.15);
+  color: #b85454;
+}
+
+.challenge-job-result .challenge-score-badge {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: white;
+}
+
+.challenge-score-badge.score-s { background: #b8860b; }
+.challenge-score-badge.score-a { background: var(--ruby); }
+.challenge-score-badge.score-b { background: var(--steel); }
+.challenge-score-badge.score-c { background: #7a6e5d; }
+.challenge-score-badge.score-d { background: #5a4f42; }
+
+.challenge-job-result .challenge-result-error {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.challenge-job-result .challenge-result-error strong {
+  color: var(--ink);
+}
+
+.challenge-all-done {
+  padding: 14px;
+  text-align: center;
+  background: rgba(92, 148, 110, 0.12);
+  border: 1px solid #5c946e;
+  border-radius: 6px;
+  color: #2d5a3d;
+  font-weight: 800;
+}
+
+.challenge-all-done::before {
+  content: "🎉 ";
+}
+
+.inventory {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.inventory h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ruby);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inventory h3::before {
+  content: "📦";
+  font-size: 12px;
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.inventory-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #fff8ec;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.inventory-item.out-of-stock {
+  opacity: 0.5;
+  background: rgba(122, 110, 93, 0.06);
+}
+
+.inventory-part-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.inventory-count {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  background: var(--steel);
+  color: white;
+  border-radius: 4px;
+  font-weight: 900;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-item.out-of-stock .inventory-count {
+  background: var(--ruby);
+}
+
+.inventory-item.highlight {
+  animation: inventoryHighlight 0.5s ease;
+  box-shadow: 0 0 0 3px rgba(200, 154, 69, 0.5);
+  border-color: var(--brass);
+}
+
+@keyframes inventoryHighlight {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(200, 154, 69, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(200, 154, 69, 0.25); }
+}
+
+.parts button .part-stock {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: var(--steel);
+  color: white;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.parts button.out-of-stock .part-stock {
+  background: var(--ruby);
+}
+
+@media (max-width: 600px) {
+  .mode-switch {
+    width: 100%;
+  }
+
+  .mode-btn {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+}

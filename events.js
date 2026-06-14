@@ -1,4 +1,13 @@
 window.Handler = {
+  switchMode(mode) {
+    const switched = JobStore.switchMode(mode);
+    if (!switched) return;
+    Renderer.fullWorkspace();
+    Renderer.diagnosticTip(null);
+    Renderer.testHistory();
+    if (dom.manualOverlay.classList.contains("open")) ManualRenderer.refreshAll();
+  },
+
   switchJob(index) {
     const switched = JobStore.switchJob(index);
     if (!switched) return;
@@ -9,13 +18,27 @@ window.Handler = {
 
   placePart(slot, value) {
     const result = JobStore.placePart(slot, value);
-    if (!result.success) return;
+    if (!result.success) {
+      if (result.reason === "out_of_stock") {
+        Renderer.diagnosticTip({ type: "error", text: "该零件库存不足，请选择其他零件或更换已装配的零件。" });
+      }
+      return;
+    }
     Renderer.slots();
     Renderer.diagnosticTip(null);
     const socket = $(`[data-slot="${slot}"]`);
     socket.classList.add("filled");
     socket.querySelector("span").textContent = JobData.getPartName(slot, value);
     Renderer.triggerReplaceFeedback(slot, result.oldName, result.isReplace);
+
+    if (JobStore.mode === "daily") {
+      Renderer.inventory();
+      Renderer.partButtons();
+      if (result.partKey) {
+        Renderer.highlightInventory(result.partKey);
+      }
+    }
+
     if (dom.manualOverlay.classList.contains("open")) ManualRenderer.refreshAll();
   },
 
@@ -43,7 +66,8 @@ window.Handler = {
         const tier = JobData.getTier(abs);
         const score = tier.grade;
 
-        const job = JobData.JOBS[testSnapshot.jobIndex];
+        const jobs = JobStore.getJobList();
+        const job = jobs[testSnapshot.jobIndex];
         const targetMax = job.acceptance.maxError;
         const accepted = abs <= targetMax;
         const gap = abs - targetMax;
@@ -66,7 +90,16 @@ window.Handler = {
         JobStore.addTestRecord(record);
 
         Renderer.testHistory();
-        Renderer.jobList();
+
+        if (JobStore.mode === "daily") {
+          Renderer.challengeJobs();
+          Renderer.challengeScore();
+          Renderer.inventory();
+          Renderer.partButtons();
+        } else {
+          Renderer.jobList();
+        }
+
         Renderer.testingControls(false);
       }
     }, 180);
@@ -85,8 +118,42 @@ window.Handler = {
   }
 };
 
+function bindModeEvents() {
+  dom.modeButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      Handler.switchMode(btn.dataset.mode);
+    });
+  });
+}
+
+function bindChallengeJobEvents() {
+  dom.challengeJobs.addEventListener("click", (e) => {
+    if (JobStore.mode !== "daily") return;
+    const item = e.target.closest(".challenge-job-item");
+    if (!item) return;
+    if (item.classList.contains("locked")) return;
+    if (item.classList.contains("is-disabled")) return;
+
+    const idx = Number(item.dataset.challengeIndex);
+    Handler.switchJob(idx);
+  });
+
+  dom.challengeJobs.addEventListener("keydown", (e) => {
+    if (JobStore.mode !== "daily") return;
+    const item = e.target.closest(".challenge-job-item");
+    if (!item) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (item.classList.contains("locked")) return;
+      const idx = Number(item.dataset.challengeIndex);
+      Handler.switchJob(idx);
+    }
+  });
+}
+
 function bindJobListEvents() {
   dom.jobList.addEventListener("click", (e) => {
+    if (JobStore.mode !== "free") return;
     const item = e.target.closest(".job-list-item");
     if (!item) return;
     if (item.classList.contains("is-disabled")) return;
@@ -95,6 +162,7 @@ function bindJobListEvents() {
   });
 
   dom.jobList.addEventListener("keydown", (e) => {
+    if (JobStore.mode !== "free") return;
     const item = e.target.closest(".job-list-item");
     if (!item) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -109,6 +177,11 @@ function bindPartEvents() {
   dom.partButtons.forEach((button) => {
     button.addEventListener("dragstart", (event) => {
       if (JobStore.isTesting) {
+        event.preventDefault();
+        return;
+      }
+      const partKey = button.dataset.part;
+      if (JobStore.mode === "daily" && JobStore.getPartStock(partKey) <= 0) {
         event.preventDefault();
         return;
       }
@@ -191,6 +264,8 @@ function bindManualEvents() {
 }
 
 window.bindEvents = function () {
+  bindModeEvents();
+  bindChallengeJobEvents();
   bindJobListEvents();
   bindPartEvents();
   bindSocketEvents();
