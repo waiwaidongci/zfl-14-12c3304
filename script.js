@@ -4,16 +4,19 @@ const JobData = {
     {
       name: "旧海军舱钟",
       fault: "快走明显，发条输出不稳，摆轮偏短。目标误差小于每天18秒。",
+      targetMax: 18,
       target: { gear: "balanced", spring: "steady", escapement: "clean", pendulum: "long" }
     },
     {
       name: "剧院后台挂钟",
       fault: "慢走且齿轮磨损，擒纵需要清洁。目标误差小于每天22秒。",
+      targetMax: 22,
       target: { gear: "fast", spring: "steady", escapement: "clean", pendulum: "short" }
     },
     {
       name: "旅行黄铜闹钟",
       fault: "运输后发条偏松，摆轮过长，齿轮需要更高传动比。目标误差小于每天20秒。",
+      targetMax: 20,
       target: { gear: "fast", spring: "tight", escapement: "clean", pendulum: "short" }
     }
   ],
@@ -860,7 +863,7 @@ const Diagnostics = {
       };
     }
 
-    if (absError <= job.targetMax || absError <= 18) {
+    if (absError <= job.targetMax) {
       if (lengthTune === 0 && meshTune === 0) {
         return {
           type: "good",
