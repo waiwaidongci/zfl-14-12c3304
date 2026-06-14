@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>微型制钟师</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="workbench">
+      <section class="clock-area">
+        <header class="top">
+          <div>
+            <p>Atelier Horologe</p>
+            <h1>微型制钟师</h1>
+          </div>
+          <button id="newJob">下一只钟</button>
+        </header>
+
+        <div class="clock-shell">
+          <div class="clock-face">
+            <div class="hand hour"></div>
+            <div class="hand minute"></div>
+            <div class="socket socket-gear" data-slot="gear"><span>齿轮</span></div>
+            <div class="socket socket-spring" data-slot="spring"><span>发条</span></div>
+            <div class="socket socket-escapement" data-slot="escapement"><span>擒纵</span></div>
+            <div class="socket socket-pendulum" data-slot="pendulum"><span>摆轮</span></div>
+            <div class="pendulum" id="pendulum"></div>
+          </div>
+        </div>
+
+        <div class="parts" aria-label="零件托盘">
+          <button draggable="true" data-part="gear:balanced">均衡齿轮</button>
+          <button draggable="true" data-part="gear:fast">高速齿轮</button>
+          <button draggable="true" data-part="spring:steady">稳压发条</button>
+          <button draggable="true" data-part="spring:tight">紧绷发条</button>
+          <button draggable="true" data-part="escapement:clean">清洁擒纵</button>
+          <button draggable="true" data-part="escapement:worn">旧擒纵</button>
+          <button draggable="true" data-part="pendulum:short">短摆轮</button>
+          <button draggable="true" data-part="pendulum:long">长摆轮</button>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="job">
+          <h2 id="jobName">旧海军舱钟</h2>
+          <p id="jobFault">故障记录载入中</p>
+        </section>
+
+        <section class="installed">
+          <h2>装配</h2>
+          <dl>
+            <div><dt>齿轮</dt><dd id="gearSlot">空</dd></div>
+            <div><dt>发条</dt><dd id="springSlot">空</dd></div>
+            <div><dt>擒纵</dt><dd id="escapementSlot">空</dd></div>
+            <div><dt>摆轮</dt><dd id="pendulumSlot">空</dd></div>
+          </dl>
+        </section>
+
+        <section class="tuning">
+          <h2>微调</h2>
+          <label>
+            摆长
+            <input id="lengthTune" type="range" min="-8" max="8" value="0" />
+          </label>
+          <label>
+            咬合
+            <input id="meshTune" type="range" min="-8" max="8" value="0" />
+          </label>
+        </section>
+
+        <section class="test">
+          <button id="testBtn">走时测试</button>
+          <div class="readout">
+            <span>误差</span>
+            <strong id="errorReadout">--</strong>
+          </div>
+          <div class="readout">
+            <span>评分</span>
+            <strong id="scoreReadout">--</strong>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

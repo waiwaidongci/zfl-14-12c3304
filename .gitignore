@@ -1,0 +1,22 @@
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*
+
+# Dependencies and caches
+node_modules/
+.cache/
+.parcel-cache/
+.vite/
+
+# Build output and logs
+dist/
+build/
+coverage/
+*.log
+
+# Editor folders
+.idea/
+.vscode/
