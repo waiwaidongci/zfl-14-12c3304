@@ -61,6 +61,7 @@ function loadJob() {
     socket.querySelector("span").textContent = socket.dataset.slot === "escapement" ? "擒纵" : socket.dataset.slot === "pendulum" ? "摆轮" : socket.dataset.slot === "spring" ? "发条" : "齿轮";
   });
   updateSlots();
+  if (manualOverlay.classList.contains("open")) refreshAllManualPanels();
 }
 
 function updateSlots() {
@@ -79,6 +80,7 @@ function placePart(slot, value) {
   socket.querySelector("span").textContent = partNames[`${slot}:${value}`];
   updateSlots();
   estimateError(false);
+  if (manualOverlay.classList.contains("open")) refreshAllManualPanels();
 }
 
 function estimateError(show) {
@@ -148,6 +150,251 @@ document.querySelector("#newJob").addEventListener("click", () => {
   loadJob();
 });
 
-[lengthTune, meshTune].forEach((input) => input.addEventListener("input", () => estimateError(false)));
+[lengthTune, meshTune].forEach((input) =>
+  input.addEventListener("input", () => {
+    estimateError(false);
+    if (manualOverlay.classList.contains("open")) renderCalcPanel();
+  })
+);
+
+const slotLabels = { gear: "齿轮", spring: "发条", escapement: "擒纵", pendulum: "摆轮" };
+const tiers = [
+  { grade: "S", max: 12, desc: "大师级精度" },
+  { grade: "A", max: 22, desc: "优秀走时" },
+  { grade: "B", max: 38, desc: "合格水准" },
+  { grade: "C", max: 58, desc: "勉强可用" },
+  { grade: "D", max: Infinity, desc: "需要返工" }
+];
+
+function getTier(error) {
+  const abs = Math.abs(error);
+  for (const t of tiers) {
+    if (abs <= t.max) return t;
+  }
+  return tiers[tiers.length - 1];
+}
+
+function switchManualTab(tabName) {
+  document.querySelectorAll(".manual-tab").forEach((btn) => {
+    const isActive = btn.dataset.tab === tabName;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", String(isActive));
+  });
+  document.querySelectorAll(".manual-tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.id === `tab-${tabName}`);
+  });
+}
+
+document.querySelectorAll(".manual-tab").forEach((btn) => {
+  btn.addEventListener("click", () => switchManualTab(btn.dataset.tab));
+});
+
+function renderAdvicePanel() {
+  const job = jobs[jobIndex];
+  document.getElementById("adviceJobName").textContent = job.name;
+  document.getElementById("adviceJobFault").textContent = job.fault;
+
+  const targetList = document.getElementById("adviceTargetList");
+  targetList.innerHTML = Object.entries(job.target)
+    .map(([slot, variant]) => {
+      const name = partNames[`${slot}:${variant}`];
+      return `<li><span class="slot-label">${slotLabels[slot]}</span><span class="part-name">${name}</span></li>`;
+    })
+    .join("");
+
+  const statusList = document.getElementById("adviceStatusList");
+  let correctCount = 0;
+  let emptyCount = 0;
+
+  statusList.innerHTML = Object.keys(job.target)
+    .map((slot) => {
+      const wanted = job.target[slot];
+      const current = installed[slot];
+      let statusClass = "";
+      let displayName = "";
+
+      if (!current) {
+        statusClass = "status-empty";
+        displayName = "（空）";
+        emptyCount++;
+      } else if (current === wanted) {
+        statusClass = "status-correct";
+        displayName = partNames[`${slot}:${current}`];
+        correctCount++;
+      } else {
+        statusClass = "status-wrong";
+        displayName = partNames[`${slot}:${current}`];
+      }
+
+      return `<li class="${statusClass}"><span class="slot-label">${slotLabels[slot]}</span><span class="part-name">${displayName}</span></li>`;
+    })
+    .join("");
+
+  const hint = document.getElementById("adviceStatusHint");
+  const totalSlots = Object.keys(job.target).length;
+
+  if (correctCount === totalSlots) {
+    hint.className = "status-hint status-good";
+    hint.textContent = "零件全部装配正确！现在调节摆长和咬合滑块，把总误差压到目标线以下。";
+  } else if (emptyCount === totalSlots) {
+    hint.className = "status-hint";
+    hint.textContent = "还没有安装任何零件，按照上方「目标零件」清单依次选择，或从零件托盘拖拽到对应插槽。";
+  } else if (emptyCount > 0) {
+    hint.className = "status-hint";
+    hint.textContent = `还有 ${emptyCount} 个插槽未填装，先把零件装齐再进行微调。`;
+  } else {
+    const wrongCount = totalSlots - correctCount;
+    hint.className = "status-hint";
+    hint.textContent = `有 ${wrongCount} 个零件与目标不符（✗ 标记），对照目标清单更换后再微调。`;
+  }
+}
+
+function renderPartsTable() {
+  const tbody = document.getElementById("partsTableBody");
+  let html = "";
+  Object.entries(effect).forEach(([slot, variants]) => {
+    Object.entries(variants).forEach(([variant, value], i) => {
+      const name = partNames[`${slot}:${variant}`];
+      const cls = value > 0 ? "effect-pos" : value < 0 ? "effect-neg" : "";
+      const sign = value > 0 ? "+" : "";
+      const partKey = `${slot}:${variant}`;
+      html += `<tr data-part="${partKey}"><td>${i === 0 ? slotLabels[slot] : ""}</td><td>${name}</td><td class="effect-num ${cls}">${sign}${value}</td></tr>`;
+    });
+  });
+  tbody.innerHTML = html;
+
+  tbody.querySelectorAll("tr").forEach((row) => {
+    row.addEventListener("click", () => {
+      const partKey = row.dataset.part;
+      const partBtn = document.querySelector(`.parts button[data-part="${partKey}"]`);
+      const tableRows = tbody.querySelectorAll("tr");
+      tableRows.forEach((r) => r.classList.remove("row-highlight"));
+      row.classList.add("row-highlight");
+
+      if (partBtn) {
+        partBtn.classList.remove("parts-button-highlight");
+        void partBtn.offsetWidth;
+        partBtn.classList.add("parts-button-highlight");
+        partBtn.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        setTimeout(() => {
+          partBtn.classList.remove("parts-button-highlight");
+          row.classList.remove("row-highlight");
+        }, 1200);
+      }
+    });
+  });
+}
+
+function renderTierList() {
+  const tierList = document.getElementById("tierList");
+  tierList.innerHTML = tiers
+    .map((t, idx) => {
+      const bound = t.max === Infinity ? `> ${tiers[idx - 1].max}` : `≤ ${t.max}`;
+      return `<li class="tier-item tier-${t.grade.toLowerCase()}"><span class="tier-badge">${t.grade}</span><span>误差 ${bound} 秒/日 — ${t.desc}</span></li>`;
+    })
+    .join("");
+}
+
+function renderCalcPanel() {
+  const job = jobs[jobIndex];
+  const calcGrid = document.getElementById("calcGrid");
+  let totalError = 0;
+  let rowsHtml = "";
+
+  Object.entries(job.target).forEach(([slot, wanted]) => {
+    const current = installed[slot];
+    let errorVal;
+    let partText;
+    let rowClass = "";
+
+    if (!current) {
+      errorVal = slot === "escapement" ? 42 : 34;
+      partText = "（空 — 罚分）";
+      rowClass = "calc-empty";
+    } else {
+      errorVal = Math.abs(effect[slot][current] - effect[slot][wanted]);
+      partText = partNames[`${slot}:${current}`];
+    }
+
+    totalError += errorVal;
+    const wantedName = partNames[`${slot}:${wanted}`];
+    const cls = errorVal > 0 ? "effect-pos" : "";
+    const sign = errorVal > 0 ? "+" : "";
+
+    rowsHtml += `<div class="calc-row ${rowClass}">
+      <span class="calc-slot">${slotLabels[slot]}</span>
+      <span class="calc-part">${partText}</span>
+      <span class="calc-target">目标：${wantedName}</span>
+      <span class="calc-error ${cls}">${sign}${errorVal}</span>
+    </div>`;
+  });
+
+  calcGrid.innerHTML = rowsHtml;
+
+  const calcLength = document.getElementById("calcLength");
+  const calcMesh = document.getElementById("calcMesh");
+  calcLength.value = lengthTune.value;
+  calcMesh.value = meshTune.value;
+
+  function computeTotal() {
+    let tuneL = Number(calcLength.value) || 0;
+    let tuneM = Number(calcMesh.value) || 0;
+    tuneL = Math.max(-8, Math.min(8, tuneL));
+    tuneM = Math.max(-8, Math.min(8, tuneM));
+    calcLength.value = tuneL;
+    calcMesh.value = tuneM;
+
+    const tuneError = tuneL * -3 + tuneM * 2.2;
+    const rawTotal = totalError + tuneError;
+    const absTotal = Math.abs(Math.round(rawTotal));
+
+    document.getElementById("calcTotal").textContent = `${absTotal} 秒/日`;
+
+    const tier = getTier(absTotal);
+    const hint = document.getElementById("calcHint");
+    hint.className = `calc-hint calc-tier-${tier.grade.toLowerCase()}`;
+    const nextTierIdx = tiers.indexOf(tier) - 1;
+    let upHint = "";
+    if (nextTierIdx >= 0) {
+      const gap = absTotal - tiers[nextTierIdx].max;
+      upHint = `距上一档（${tiers[nextTierIdx].grade}）还差 ${gap} 秒。`;
+    } else {
+      upHint = "已达最高档位！";
+    }
+    hint.textContent = `理论档位：${tier.grade} — ${tier.desc}。${upHint}`;
+  }
+
+  computeTotal();
+  calcLength.oninput = computeTotal;
+  calcMesh.oninput = computeTotal;
+}
+
+function refreshAllManualPanels() {
+  renderAdvicePanel();
+  renderTierList();
+  renderPartsTable();
+  renderCalcPanel();
+}
+
+const manualOverlay = document.getElementById("manualOverlay");
+document.getElementById("manualBtn").addEventListener("click", () => {
+  refreshAllManualPanels();
+  switchManualTab("advice");
+  manualOverlay.classList.add("open");
+  manualOverlay.setAttribute("aria-hidden", "false");
+});
+
+function closeManual() {
+  manualOverlay.classList.remove("open");
+  manualOverlay.setAttribute("aria-hidden", "true");
+}
+
+document.getElementById("manualClose").addEventListener("click", closeManual);
+manualOverlay.addEventListener("click", (e) => {
+  if (e.target === manualOverlay) closeManual();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && manualOverlay.classList.contains("open")) closeManual();
+});
 
 loadJob();

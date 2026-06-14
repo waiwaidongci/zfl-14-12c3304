@@ -47,6 +47,11 @@
           <p id="jobFault">故障记录载入中</p>
         </section>
 
+        <button id="manualBtn" class="manual-trigger" aria-label="打开修理手册">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          修理手册
+        </button>
+
         <section class="installed">
           <h2>装配</h2>
           <dl>
@@ -82,6 +87,131 @@
         </section>
       </aside>
     </main>
+
+    <div id="manualOverlay" class="manual-overlay" aria-hidden="true">
+      <div class="manual-panel">
+        <header class="manual-header">
+          <h2>修理手册</h2>
+          <button id="manualClose" class="manual-close" aria-label="关闭手册">&times;</button>
+        </header>
+
+        <nav class="manual-tabs" role="tablist" aria-label="手册章节">
+          <button class="manual-tab active" data-tab="advice" role="tab" aria-selected="true">装配建议</button>
+          <button class="manual-tab" data-tab="parts" role="tab" aria-selected="false">零件</button>
+          <button class="manual-tab" data-tab="tuning" role="tab" aria-selected="false">微调</button>
+          <button class="manual-tab" data-tab="tiers" role="tab" aria-selected="false">评分</button>
+          <button class="manual-tab" data-tab="calc" role="tab" aria-selected="false">演算</button>
+        </nav>
+
+        <div class="manual-body">
+          <section class="manual-tab-panel active" id="tab-advice" role="tabpanel">
+            <div class="manual-section">
+              <h3>当前订单</h3>
+              <div class="advice-job">
+                <p class="advice-job-name" id="adviceJobName">—</p>
+                <p class="advice-job-fault" id="adviceJobFault">—</p>
+              </div>
+            </div>
+            <div class="manual-section">
+              <h3>目标零件</h3>
+              <ul class="target-list" id="adviceTargetList"></ul>
+            </div>
+            <div class="manual-section">
+              <h3>当前状态</h3>
+              <ul class="status-list" id="adviceStatusList"></ul>
+              <p class="status-hint" id="adviceStatusHint"></p>
+            </div>
+          </section>
+
+          <section class="manual-tab-panel" id="tab-parts" role="tabpanel">
+            <div class="manual-section">
+              <h3>零件类型与效果</h3>
+              <table class="parts-table">
+                <thead>
+                  <tr>
+                    <th>零件</th>
+                    <th>类型</th>
+                    <th>走时影响</th>
+                  </tr>
+                </thead>
+                <tbody id="partsTableBody"></tbody>
+              </table>
+              <p class="table-hint">点击表格行可在工作台高亮对应零件</p>
+            </div>
+          </section>
+
+          <section class="manual-tab-panel" id="tab-tuning" role="tabpanel">
+            <div class="manual-section">
+              <h3>微调规则</h3>
+              <ul class="tuning-rules">
+                <li>
+                  <span class="tune-icon tune-length">⟷</span>
+                  <div>
+                    <strong>摆长滑块</strong>
+                    <p>每格 <span class="effect-num effect-neg">-3 秒/日</span></p>
+                    <p class="tune-tip">向左 = 减少误差（走时偏快时调左）</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-mesh">⚙</span>
+                  <div>
+                    <strong>咬合滑块</strong>
+                    <p>每格 <span class="effect-num effect-pos">+2.2 秒/日</span></p>
+                    <p class="tune-tip">向右 = 增加误差（走时偏慢时调右）</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-missing">✕</span>
+                  <div>
+                    <strong>未安装零件罚分</strong>
+                    <p>擒纵位 <span class="effect-num effect-pos">+42</span>，其余位 <span class="effect-num effect-pos">+34</span></p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-diff">Δ</span>
+                  <div>
+                    <strong>零件匹配误差</strong>
+                    <p>误差 = |已装零件效果 − 目标零件效果|</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-rand">≈</span>
+                  <div>
+                    <strong>测试随机波动</strong>
+                    <p>±2.5 秒（由系统随机注入，模拟真实走时波动）</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="manual-tab-panel" id="tab-tiers" role="tabpanel">
+            <div class="manual-section">
+              <h3>评分档位</h3>
+              <ul class="tier-list" id="tierList"></ul>
+              <p class="tier-hint">以「每日绝对误差秒数」划分</p>
+            </div>
+          </section>
+
+          <section class="manual-tab-panel" id="tab-calc" role="tabpanel">
+            <div class="manual-section">
+              <h3>误差演算器</h3>
+              <p class="calc-desc">模拟当前装配组合的理论误差（不含随机波动）</p>
+              <div class="calc-grid" id="calcGrid"></div>
+              <div class="calc-total">
+                <span>理论总误差</span>
+                <strong id="calcTotal">0 秒/日</strong>
+              </div>
+              <div class="calc-tune-inputs">
+                <label>摆长 <input id="calcLength" type="number" min="-8" max="8" value="0" />格</label>
+                <label>咬合 <input id="calcMesh" type="number" min="-8" max="8" value="0" />格</label>
+              </div>
+              <p class="calc-hint" id="calcHint"></p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
 
     <script src="./script.js"></script>
   </body>
