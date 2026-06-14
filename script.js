@@ -38,6 +38,7 @@ let jobIndex = 0;
 let installed = { gear: null, spring: null, escapement: null, pendulum: null };
 let testTimer = null;
 let testHistory = [];
+let isTesting = false;
 const MAX_HISTORY = 5;
 
 const jobName = document.querySelector("#jobName");
@@ -49,8 +50,44 @@ const meshTune = document.querySelector("#meshTune");
 const errorReadout = document.querySelector("#errorReadout");
 const scoreReadout = document.querySelector("#scoreReadout");
 const historyList = document.querySelector("#historyList");
+const newJobBtn = document.querySelector("#newJob");
+const testBtn = document.querySelector("#testBtn");
+const partButtons = [...document.querySelectorAll(".parts button")];
+
+function setTestingControls(disabled) {
+  isTesting = disabled;
+
+  newJobBtn.disabled = disabled;
+  newJobBtn.classList.toggle("is-disabled", disabled);
+  newJobBtn.setAttribute("aria-disabled", String(disabled));
+
+  partButtons.forEach((btn) => {
+    btn.disabled = disabled;
+    btn.classList.toggle("is-disabled", disabled);
+    btn.setAttribute("aria-disabled", String(disabled));
+    if (disabled) btn.removeAttribute("draggable");
+    else btn.setAttribute("draggable", "true");
+  });
+
+  sockets.forEach((socket) => {
+    socket.classList.toggle("is-disabled", disabled);
+    socket.setAttribute("aria-disabled", String(disabled));
+  });
+
+  lengthTune.disabled = disabled;
+  lengthTune.classList.toggle("is-disabled", disabled);
+  lengthTune.setAttribute("aria-disabled", String(disabled));
+
+  meshTune.disabled = disabled;
+  meshTune.classList.toggle("is-disabled", disabled);
+  meshTune.setAttribute("aria-disabled", String(disabled));
+
+  document.querySelector(".parts").classList.toggle("is-disabled", disabled);
+  document.querySelector(".tuning").classList.toggle("is-disabled", disabled);
+}
 
 function loadJob() {
+  if (isTesting) return;
   const job = jobs[jobIndex];
   jobName.textContent = job.name;
   jobFault.textContent = job.fault;
@@ -92,6 +129,7 @@ function clearFeedbackState(slot) {
 }
 
 function placePart(slot, value) {
+  if (isTesting) return;
   const oldValue = installed[slot];
   const isReplace = oldValue !== null && oldValue !== value;
   const oldName = isReplace ? partNames[`${slot}:${oldValue}`] : null;
@@ -153,16 +191,21 @@ function triggerReplaceFeedback(slot, oldName, isReplace) {
   }
 }
 
-function estimateError(show) {
-  const job = jobs[jobIndex];
+function estimateError(show, snapshot) {
+  const snapInstalled = snapshot ? snapshot.installed : installed;
+  const snapLength = snapshot ? snapshot.lengthTune : lengthTune.value;
+  const snapMesh = snapshot ? snapshot.meshTune : meshTune.value;
+  const snapJobIdx = snapshot ? snapshot.jobIndex : jobIndex;
+
+  const job = jobs[snapJobIdx];
   let error = 0;
   Object.entries(job.target).forEach(([slot, wanted]) => {
-    const value = installed[slot];
+    const value = snapInstalled[slot];
     if (!value) error += slot === "escapement" ? 42 : 34;
     else error += Math.abs(effect[slot][value] - effect[slot][wanted]);
   });
-  error += Number(lengthTune.value) * -3;
-  error += Number(meshTune.value) * 2.2;
+  error += Number(snapLength) * -3;
+  error += Number(snapMesh) * 2.2;
   error += Math.round((Math.random() - 0.5) * 5);
   const abs = Math.abs(Math.round(error));
   if (show) {
@@ -172,16 +215,21 @@ function estimateError(show) {
   return abs;
 }
 
-function addTestRecord() {
-  const job = jobs[jobIndex];
+function addTestRecord(snapshot) {
+  const snapInstalled = snapshot ? snapshot.installed : installed;
+  const snapLength = snapshot ? snapshot.lengthTune : lengthTune.value;
+  const snapMesh = snapshot ? snapshot.meshTune : meshTune.value;
+  const snapJobIdx = snapshot ? snapshot.jobIndex : jobIndex;
+
+  const job = jobs[snapJobIdx];
   const error = Math.abs(Number(errorReadout.textContent.replace("秒/日", "")));
   const score = scoreReadout.textContent;
 
   const record = {
     jobName: job.name,
-    parts: { ...installed },
-    lengthTune: Number(lengthTune.value),
-    meshTune: Number(meshTune.value),
+    parts: { ...snapInstalled },
+    lengthTune: Number(snapLength),
+    meshTune: Number(snapMesh),
     error: error,
     score: score,
     timestamp: Date.now()
@@ -231,10 +279,15 @@ function renderHistory() {
 
 document.querySelectorAll(".parts button").forEach((button) => {
   button.addEventListener("dragstart", (event) => {
+    if (isTesting) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer.setData("text/plain", button.dataset.part);
   });
 
   button.addEventListener("click", () => {
+    if (isTesting) return;
     const [slot, value] = button.dataset.part.split(":");
     placePart(slot, value);
   });
@@ -242,11 +295,16 @@ document.querySelectorAll(".parts button").forEach((button) => {
 
 sockets.forEach((socket) => {
   socket.addEventListener("dragover", (event) => {
+    if (isTesting) return;
     event.preventDefault();
     socket.classList.add("over");
   });
   socket.addEventListener("dragleave", () => socket.classList.remove("over"));
   socket.addEventListener("drop", (event) => {
+    if (isTesting) {
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     socket.classList.remove("over");
     const [slot, value] = event.dataTransfer.getData("text/plain").split(":");
@@ -255,7 +313,20 @@ sockets.forEach((socket) => {
 });
 
 document.querySelector("#testBtn").addEventListener("click", () => {
+  if (isTesting) return;
   if (testTimer) clearInterval(testTimer);
+
+  const testSnapshot = {
+    installed: { ...installed },
+    lengthTune: Number(lengthTune.value),
+    meshTune: Number(meshTune.value),
+    jobIndex: jobIndex
+  };
+
+  setTestingControls(true);
+  testBtn.disabled = true;
+  testBtn.classList.add("is-disabled");
+  testBtn.setAttribute("aria-disabled", "true");
   let pulses = 0;
   errorReadout.textContent = "测试中";
   scoreReadout.textContent = "--";
@@ -266,20 +337,27 @@ document.querySelector("#testBtn").addEventListener("click", () => {
     document.querySelector(".hour").style.transform = `translate(-50%, -100%) rotate(${45 + pulses * 2}deg)`;
     if (pulses >= 9) {
       clearInterval(testTimer);
+      testTimer = null;
       document.body.classList.remove("testing");
-      estimateError(true);
-      addTestRecord();
+      estimateError(true, testSnapshot);
+      addTestRecord(testSnapshot);
+      setTestingControls(false);
+      testBtn.disabled = false;
+      testBtn.classList.remove("is-disabled");
+      testBtn.setAttribute("aria-disabled", "false");
     }
   }, 180);
 });
 
 document.querySelector("#newJob").addEventListener("click", () => {
+  if (isTesting) return;
   jobIndex = (jobIndex + 1) % jobs.length;
   loadJob();
 });
 
 [lengthTune, meshTune].forEach((input) =>
   input.addEventListener("input", () => {
+    if (isTesting) return;
     estimateError(false);
     if (manualOverlay.classList.contains("open")) renderCalcPanel();
   })

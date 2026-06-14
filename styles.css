@@ -92,6 +92,21 @@ h2 {
   color: white;
   background: var(--ink);
   cursor: pointer;
+  transition: opacity 0.2s, background 0.2s, transform 0.1s;
+}
+
+.top button:hover:not(:disabled):not(.is-disabled),
+.test button:hover:not(:disabled):not(.is-disabled) {
+  background: #3a322c;
+}
+
+.top button:disabled,
+.top button.is-disabled,
+.test button:disabled,
+.test button.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #5a4f42;
 }
 
 .clock-shell {
@@ -170,6 +185,12 @@ h2 {
 
 .socket.replacing {
   animation: socketReplace 1.6s ease;
+}
+
+.socket.is-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  filter: saturate(0.5);
 }
 
 @keyframes socketFlashIn {
@@ -269,10 +290,44 @@ h2 {
   border-radius: 6px;
   background: #fff8ec;
   cursor: grab;
+  transition: opacity 0.2s, filter 0.2s, background 0.15s;
 }
 
-.parts button:active {
+.parts button:active:not(:disabled):not(.is-disabled) {
   cursor: grabbing;
+}
+
+.parts button:hover:not(:disabled):not(.is-disabled) {
+  background: #fff1d6;
+  border-color: var(--brass);
+}
+
+.parts button:disabled,
+.parts button.is-disabled {
+  opacity: 0.5;
+  filter: grayscale(0.4);
+  cursor: not-allowed;
+  background: #ede6d8;
+}
+
+.parts.is-disabled {
+  position: relative;
+}
+
+.parts.is-disabled::after {
+  content: "测试中";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(241, 234, 223, 0.85);
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 2px;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
 }
 
 .side {
@@ -370,6 +425,29 @@ dd {
 .tuning {
   display: grid;
   gap: 14px;
+  position: relative;
+  transition: filter 0.2s, opacity 0.2s;
+}
+
+.tuning.is-disabled {
+  filter: saturate(0.6);
+}
+
+.tuning.is-disabled::after {
+  content: "测试中";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 250, 241, 0.9);
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 2px;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(2px);
 }
 
 label {
@@ -381,6 +459,14 @@ label {
 
 input[type="range"] {
   accent-color: var(--ruby);
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+input[type="range"]:disabled,
+input[type="range"].is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
 }
 
 .test {
