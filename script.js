@@ -66,21 +66,76 @@ function loadJob() {
 
 function updateSlots() {
   Object.entries(installed).forEach(([slot, part]) => {
-    const dd = document.querySelector(`#${slot}Slot`);
-    dd.textContent = part ? partNames[`${slot}:${part}`] : "空";
+    const span = document.querySelector(`#${slot}Slot`);
+    span.textContent = part ? partNames[`${slot}:${part}`] : "空";
   });
   const swing = installed.pendulum === "short" ? 0.95 : installed.pendulum === "long" ? 1.8 : 1.3;
   pendulum.style.animationDuration = `${swing}s`;
 }
 
 function placePart(slot, value) {
+  const oldValue = installed[slot];
+  const isReplace = oldValue !== null && oldValue !== value;
+  const oldName = isReplace ? partNames[`${slot}:${oldValue}`] : null;
+
   installed[slot] = value;
   const socket = document.querySelector(`[data-slot="${slot}"]`);
   socket.classList.add("filled");
   socket.querySelector("span").textContent = partNames[`${slot}:${value}`];
   updateSlots();
   estimateError(false);
+
+  triggerReplaceFeedback(slot, oldName, isReplace);
+
   if (manualOverlay.classList.contains("open")) refreshAllManualPanels();
+}
+
+let feedbackTimers = {};
+
+function triggerReplaceFeedback(slot, oldName, isReplace) {
+  const socket = document.querySelector(`[data-slot="${slot}"]`);
+  const slotRow = document.querySelector(`.installed [data-slot-row="${slot}"]`);
+
+  if (feedbackTimers[slot]) {
+    clearTimeout(feedbackTimers[slot]);
+    socket.classList.remove("flash-in");
+    slotRow.classList.remove("flash-in");
+  }
+
+  if (isReplace) {
+    socket.classList.add("replacing");
+    slotRow.classList.add("replacing");
+
+    const replaceBadge = slotRow.querySelector(".replace-badge");
+    if (replaceBadge) {
+      replaceBadge.textContent = `替换：${oldName}`;
+      replaceBadge.classList.add("show");
+    }
+
+    const socketReplaceBadge = socket.querySelector(".socket-replace-badge");
+    if (socketReplaceBadge) {
+      socketReplaceBadge.textContent = `← ${oldName}`;
+      socketReplaceBadge.classList.add("show");
+    }
+
+    feedbackTimers[slot] = setTimeout(() => {
+      socket.classList.remove("replacing");
+      slotRow.classList.remove("replacing");
+      if (replaceBadge) replaceBadge.classList.remove("show");
+      if (socketReplaceBadge) socketReplaceBadge.classList.remove("show");
+      feedbackTimers[slot] = null;
+    }, 1600);
+  } else {
+    void socket.offsetWidth;
+    socket.classList.add("flash-in");
+    slotRow.classList.add("flash-in");
+
+    feedbackTimers[slot] = setTimeout(() => {
+      socket.classList.remove("flash-in");
+      slotRow.classList.remove("flash-in");
+      feedbackTimers[slot] = null;
+    }, 900);
+  }
 }
 
 function estimateError(show) {

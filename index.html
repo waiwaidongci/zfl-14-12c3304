@@ -21,10 +21,10 @@
           <div class="clock-face">
             <div class="hand hour"></div>
             <div class="hand minute"></div>
-            <div class="socket socket-gear" data-slot="gear"><span>齿轮</span></div>
-            <div class="socket socket-spring" data-slot="spring"><span>发条</span></div>
-            <div class="socket socket-escapement" data-slot="escapement"><span>擒纵</span></div>
-            <div class="socket socket-pendulum" data-slot="pendulum"><span>摆轮</span></div>
+            <div class="socket socket-gear" data-slot="gear"><span>齿轮</span><div class="socket-replace-badge"></div></div>
+            <div class="socket socket-spring" data-slot="spring"><span>发条</span><div class="socket-replace-badge"></div></div>
+            <div class="socket socket-escapement" data-slot="escapement"><span>擒纵</span><div class="socket-replace-badge"></div></div>
+            <div class="socket socket-pendulum" data-slot="pendulum"><span>摆轮</span><div class="socket-replace-badge"></div></div>
             <div class="pendulum" id="pendulum"></div>
           </div>
         </div>
@@ -55,10 +55,10 @@
         <section class="installed">
           <h2>装配</h2>
           <dl>
-            <div><dt>齿轮</dt><dd id="gearSlot">空</dd></div>
-            <div><dt>发条</dt><dd id="springSlot">空</dd></div>
-            <div><dt>擒纵</dt><dd id="escapementSlot">空</dd></div>
-            <div><dt>摆轮</dt><dd id="pendulumSlot">空</dd></div>
+            <div data-slot-row="gear"><dt>齿轮</dt><dd><span id="gearSlot">空</span><span class="replace-badge"></span></dd></div>
+            <div data-slot-row="spring"><dt>发条</dt><dd><span id="springSlot">空</span><span class="replace-badge"></span></dd></div>
+            <div data-slot-row="escapement"><dt>擒纵</dt><dd><span id="escapementSlot">空</span><span class="replace-badge"></span></dd></div>
+            <div data-slot-row="pendulum"><dt>摆轮</dt><dd><span id="pendulumSlot">空</span><span class="replace-badge"></span></dd></div>
           </dl>
         </section>
 
