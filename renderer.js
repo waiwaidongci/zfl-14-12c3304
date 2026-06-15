@@ -579,7 +579,10 @@ window.Renderer = {
   showTestResult(result) {
     if (!result) return;
 
-    Renderer.readouts(result.errorAbs, result.tier, {
+    const errorAbs = result.errorAbs !== undefined ? result.errorAbs : result.error;
+    const tier = result.tier !== undefined ? result.tier : result.score;
+
+    Renderer.readouts(errorAbs, tier, {
       accepted: result.accepted,
       gap: result.gap,
       targetMax: result.targetMax
