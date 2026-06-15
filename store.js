@@ -6,6 +6,11 @@ window.JobStore = {
   meshTune: 0,
   isTesting: false,
   testTimer: null,
+  testPhase: "idle",
+  currentSampleIndex: 0,
+  currentTestResult: null,
+  testAttemptCount: 0,
+  lastTestConfigHash: null,
   freeHistory: [],
   challengeHistory: [],
   feedbackTimers: {},
@@ -264,6 +269,124 @@ window.JobStore = {
       partEffect: JobData.PART_EFFECT
     });
     return result.rawTotal;
+  },
+
+  getJobKey(jobIndex) {
+    const jobs = JobStore.getJobList();
+    const job = jobs[jobIndex];
+    if (JobStore.mode === "daily" && JobStore.dailyChallenge) {
+      return `daily:${JobStore.dailyChallenge.date}:${jobIndex}`;
+    }
+    return `free:${job.name}`;
+  },
+
+  getConfigHash(snapshot) {
+    const snap = snapshot || JobStore.snapshot();
+    const partsKey = Object.entries(snap.installed)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, v]) => `${k}:${v || "null"}`)
+      .join("|");
+    return `${partsKey}|l:${snap.lengthTune}|m:${snap.meshTune}`;
+  },
+
+  generateMultiSampleTest(snapshot, attemptIndex) {
+    const snap = snapshot || JobStore.snapshot();
+    const jobs = JobStore.getJobList();
+    const job = jobs[snap.jobIndex];
+    const jobKey = JobStore.getJobKey(snap.jobIndex);
+    const attempt = typeof attemptIndex === "number" ? attemptIndex : JobStore.testAttemptCount;
+
+    return CalcEngine.generateSampleSequence(
+      {
+        installed: snap.installed,
+        target: job.target,
+        lengthTune: snap.lengthTune,
+        meshTune: snap.meshTune,
+        partEffect: JobData.PART_EFFECT
+      },
+      {
+        sampleCount: JobData.TEST_CONFIG.sampleCount,
+        baseNoise: JobData.TEST_CONFIG.baseNoise,
+        jobKey,
+        attemptIndex: attempt,
+        targetMax: job.acceptance.maxError,
+        tiers: JobData.TIERS,
+        warmupStability: JobData.TEST_CONFIG.warmupStability
+      }
+    );
+  },
+
+  startTestPhase() {
+    const snap = JobStore.snapshot();
+    const configHash = JobStore.getConfigHash(snap);
+
+    if (JobStore.lastTestConfigHash !== configHash) {
+      JobStore.testAttemptCount = 0;
+      JobStore.lastTestConfigHash = configHash;
+    }
+
+    JobStore.testAttemptCount += 1;
+    JobStore.testPhase = "sampling";
+    JobStore.currentSampleIndex = 0;
+    JobStore.currentTestResult = JobStore.generateMultiSampleTest(snap, JobStore.testAttemptCount - 1);
+
+    return JobStore.currentTestResult;
+  },
+
+  advanceSample() {
+    if (!JobStore.currentTestResult) return null;
+    if (JobStore.currentSampleIndex >= JobStore.currentTestResult.samples.length) {
+      JobStore.testPhase = "complete";
+      return null;
+    }
+
+    const sample = JobStore.currentTestResult.samples[JobStore.currentSampleIndex];
+    JobStore.currentSampleIndex += 1;
+
+    if (JobStore.currentSampleIndex >= JobStore.currentTestResult.samples.length) {
+      JobStore.testPhase = "complete";
+    }
+
+    return sample;
+  },
+
+  completeTest() {
+    if (!JobStore.currentTestResult) return null;
+
+    const result = JobStore.currentTestResult;
+    const snap = {
+      installed: { ...result.installed || JobStore.installed },
+      lengthTune: result.lengthTune !== undefined ? result.lengthTune : JobStore.lengthTune,
+      meshTune: result.meshTune !== undefined ? result.meshTune : JobStore.meshTune,
+      jobIndex: JobStore.mode === "daily" ? JobStore.currentChallengeJobIndex : JobStore.currentJobIndex
+    };
+    const jobs = JobStore.getJobList();
+    const job = jobs[snap.jobIndex];
+
+    const record = {
+      jobName: job.name,
+      parts: { ...snap.installed },
+      lengthTune: snap.lengthTune,
+      meshTune: snap.meshTune,
+      error: result.errorAbs,
+      score: result.tier,
+      jobIndex: snap.jobIndex,
+      timestamp: Date.now(),
+      accepted: result.accepted,
+      gap: result.gap,
+      targetMax: result.targetMax,
+      samples: result.samples.map(s => ({ ...s })),
+      statistics: { ...result.statistics },
+      trait: { ...result.trait },
+      trendAnalysis: CalcEngine.analyzeTrend(result.samples),
+      attemptIndex: JobStore.testAttemptCount - 1,
+      seed: result.seed
+    };
+
+    JobStore.addTestRecord(record);
+    JobStore.testPhase = "idle";
+
+    return record;
   },
 
   addTestRecord(record) {

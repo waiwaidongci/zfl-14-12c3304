@@ -24,8 +24,13 @@ window.Handler = {
       }
       return;
     }
+
+    JobStore.lastTestConfigHash = null;
+    JobStore.testAttemptCount = 0;
+
     Renderer.slots();
     Renderer.diagnosticTip(null);
+    Renderer.resetTestDisplay();
     const socket = $(`[data-slot="${slot}"]`);
     socket.classList.add("filled");
     socket.querySelector("span").textContent = JobData.getPartName(slot, value);
@@ -44,70 +49,71 @@ window.Handler = {
 
   startTest() {
     if (JobStore.isTesting) return;
-    if (JobStore.testTimer) clearInterval(JobStore.testTimer);
+    if (JobStore.testTimer) {
+      clearInterval(JobStore.testTimer);
+      JobStore.testTimer = null;
+    }
 
-    const testSnapshot = JobStore.snapshot();
+    const testResult = JobStore.startTestPhase();
+    const totalSamples = testResult.samples.length;
 
     Renderer.testingControls(true);
     Renderer.testingProgress();
+    Renderer.trendChart(testResult.samples, testResult.targetMax, 0);
     document.body.classList.add("testing");
 
+    let sampleIndex = 0;
     let pulses = 0;
 
     JobStore.testTimer = setInterval(() => {
       pulses += 1;
       Renderer.animateHands(pulses);
-      if (pulses >= 9) {
+
+      if (pulses % 2 === 0 && sampleIndex < totalSamples) {
+        const sample = JobStore.advanceSample();
+        if (sample) {
+          Renderer.updateLiveSample(sample, sampleIndex, totalSamples);
+          sampleIndex += 1;
+        }
+      }
+
+      if (sampleIndex >= totalSamples && pulses >= totalSamples * 2 + 2) {
         clearInterval(JobStore.testTimer);
         JobStore.testTimer = null;
         document.body.classList.remove("testing");
 
-        const abs = JobStore.calcError(testSnapshot);
-        const tier = JobData.getTier(abs);
-        const score = tier.grade;
+        const record = JobStore.completeTest();
 
-        const jobs = JobStore.getJobList();
-        const job = jobs[testSnapshot.jobIndex];
-        const targetMax = job.acceptance.maxError;
-        const accepted = abs <= targetMax;
-        const gap = abs - targetMax;
+        if (record) {
+          Renderer.showTestResult({
+            ...record,
+            samples: record.samples,
+            statistics: record.statistics
+          });
 
-        Renderer.readouts(abs, score, { accepted, gap, targetMax });
+          Renderer.testHistory();
 
-        const record = {
-          jobName: job.name,
-          parts: { ...testSnapshot.installed },
-          lengthTune: testSnapshot.lengthTune,
-          meshTune: testSnapshot.meshTune,
-          error: abs,
-          score: score,
-          jobIndex: testSnapshot.jobIndex,
-          timestamp: Date.now(),
-          accepted: accepted,
-          gap: gap,
-          targetMax: targetMax
-        };
-        JobStore.addTestRecord(record);
-
-        Renderer.testHistory();
-
-        if (JobStore.mode === "daily") {
-          Renderer.challengeJobs();
-          Renderer.challengeScore();
-          Renderer.inventory();
-          Renderer.partButtons();
-        } else {
-          Renderer.jobList();
+          if (JobStore.mode === "daily") {
+            Renderer.challengeJobs();
+            Renderer.challengeScore();
+            Renderer.inventory();
+            Renderer.partButtons();
+          } else {
+            Renderer.jobList();
+          }
         }
 
         Renderer.testingControls(false);
       }
-    }, 180);
+    }, JobData.TEST_CONFIG.sampleInterval / 2);
   },
 
   tuneInput() {
     JobStore.lengthTune = Number(dom.lengthTune.value);
     JobStore.meshTune = Number(dom.meshTune.value);
+    JobStore.lastTestConfigHash = null;
+    JobStore.testAttemptCount = 0;
+    Renderer.testAttemptInfo();
     if (dom.manualOverlay.classList.contains("open")) ManualRenderer.renderCalcPanel();
   },
 

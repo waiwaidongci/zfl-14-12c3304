@@ -51,6 +51,22 @@ window.JobData = {
 
   MAX_HISTORY: 5,
 
+  TEST_CONFIG: {
+    sampleCount: 6,
+    baseNoise: 1.5,
+    warmupStability: 0.6,
+    sampleInterval: 380,
+    maxAttemptsPerConfig: 3
+  },
+
+  TREND_DIRECTIONS: {
+    improving: { label: "误差减小", icon: "↘", color: "#4a7c59" },
+    "slightly-improving": { label: "略有改善", icon: "↘", color: "#6b8e6b" },
+    stable: { label: "走时稳定", icon: "→", color: "#6f6259" },
+    "slightly-deteriorating": { label: "略有变差", icon: "↗", color: "#b8860b" },
+    deteriorating: { label: "误差增大", icon: "↗", color: "#9f4545" }
+  },
+
   CHALLENGE_JOBS_POOL: [
     { name: "古董座钟", fault: "年代久远走时不准，齿轮磨损严重。" },
     { name: "天文台怀表", fault: "精密计时出现偏差，需要专业调校。" },

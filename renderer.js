@@ -241,17 +241,65 @@ window.Renderer = {
         ? `验收通过 · ≤${record.targetMax}秒/日`
         : `未通过 · 还差 ${record.gap} 秒/日`;
 
+      let trendHtml = "";
+      if (record.trendAnalysis) {
+        const trendInfo = JobData.TREND_DIRECTIONS[record.trendAnalysis.direction] || JobData.TREND_DIRECTIONS.stable;
+        trendHtml = `<div class="history-trend" style="color: ${trendInfo.color}">
+          <span>${trendInfo.icon} ${trendInfo.label}</span>
+        </div>`;
+      }
+
+      let miniChartHtml = "";
+      if (record.samples && record.samples.length > 1) {
+        const values = record.samples.map(s => s.abs);
+        const maxVal = Math.max(...values, record.targetMax || 0) * 1.2;
+        const points = record.samples.map((s, i) => {
+          const x = record.samples.length > 1 ? (i / (record.samples.length - 1)) * 100 : 50;
+          const y = 100 - (s.abs / maxVal) * 100;
+          return `${x},${y}`;
+        }).join(" ");
+
+        miniChartHtml = `
+          <div class="history-mini-chart" title="点击查看详细采样数据">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+              <polyline points="${points}" fill="none" stroke="${record.accepted ? '#4a7c59' : '#9f4545'}" stroke-width="2" />
+            </svg>
+          </div>
+        `;
+      }
+
+      let statsHtml = "";
+      if (record.statistics) {
+        statsHtml = `
+          <div class="history-stats">
+            <span>均值：${record.statistics.mean}</span>
+            <span>波动：${record.statistics.range}</span>
+          </div>
+        `;
+      }
+
+      let attemptHtml = "";
+      if (typeof record.attemptIndex === "number") {
+        attemptHtml = `<span class="history-attempt">第${record.attemptIndex + 1}次</span>`;
+      }
+
       return `
         <li class="history-item ${acceptedClass}" style="animation-delay: ${index * 0.05}s">
           <div class="history-job">
             <span class="history-job-name">${record.jobName}</span>
+            ${attemptHtml}
             <span class="history-score score-${record.score.toLowerCase()}">${record.score}</span>
           </div>
           <div class="history-acceptance">
             <span class="history-acceptance-icon">${acceptedIcon}</span>
             <span class="history-acceptance-text">${acceptedText}</span>
           </div>
-          <div class="history-error">误差：<strong>${record.error} 秒/日</strong></div>
+          <div class="history-error-row">
+            <div class="history-error">误差：<strong>${record.error} 秒/日</strong></div>
+            ${trendHtml}
+          </div>
+          ${miniChartHtml}
+          ${statsHtml}
           <div class="history-parts">
             <span>齿轮：<strong>${gearName}</strong></span>
             <span>发条：<strong>${springName}</strong></span>
@@ -277,6 +325,8 @@ window.Renderer = {
     Renderer.tuningControls();
     Renderer.jobList();
     Renderer.partButtons();
+    Renderer.resetTestDisplay();
+    Renderer.testAttemptInfo();
 
     if (JobStore.mode === "daily") {
       Renderer.challengeDate();
@@ -414,12 +464,140 @@ window.Renderer = {
   },
 
   testingProgress() {
-    dom.errorReadout.textContent = "测试中";
+    dom.errorReadout.textContent = "采样中";
     dom.scoreReadout.textContent = "--";
   },
 
   animateHands(pulses) {
     $(".minute").style.transform = `translate(-50%, -100%) rotate(${145 + pulses * 24}deg)`;
     $(".hour").style.transform = `translate(-50%, -100%) rotate(${45 + pulses * 2}deg)`;
+  },
+
+  trendChart(samples, targetMax, currentIndex) {
+    const count = samples.length;
+    if (count === 0) {
+      dom.trendLine.setAttribute("points", "");
+      dom.trendPoints.innerHTML = "";
+      dom.trendYMax.textContent = "--";
+      dom.trendYMid.textContent = "--";
+      dom.trendXAxis.innerHTML = "";
+      return;
+    }
+
+    const allAbs = samples.map(s => s.abs);
+    const maxVal = Math.max(...allAbs, targetMax || 0);
+    const yMax = Math.ceil(maxVal * 1.2 / 5) * 5;
+    const yMid = Math.round(yMax / 2);
+
+    dom.trendYMax.textContent = `${yMax}`;
+    dom.trendYMid.textContent = `${yMid}`;
+
+    if (targetMax !== undefined && targetMax !== null) {
+      const targetY = 100 - (targetMax / yMax) * 100;
+      dom.trendTargetLine.setAttribute("y1", targetY);
+      dom.trendTargetLine.setAttribute("y2", targetY);
+      dom.trendTargetLine.style.display = "block";
+    } else {
+      dom.trendTargetLine.style.display = "none";
+    }
+
+    const points = [];
+    const pointElements = [];
+
+    samples.forEach((sample, i) => {
+      const x = count > 1 ? (i / (count - 1)) * 200 : 100;
+      const y = 100 - (sample.abs / yMax) * 100;
+      points.push(`${x},${y}`);
+
+      const isActive = currentIndex === undefined ? true : i < currentIndex;
+      const isCurrent = currentIndex !== undefined && i === currentIndex - 1;
+
+      pointElements.push(`
+        <div class="trend-point ${isActive ? "active" : ""} ${isCurrent ? "current" : ""}" 
+             style="left: ${x / 2}%; top: ${y}%;"
+             title="第${i + 1}次采样：${sample.abs} 秒/日">
+          <span class="trend-point-value">${sample.abs}</span>
+        </div>
+      `);
+    });
+
+    dom.trendLine.setAttribute("points", points.join(" "));
+    dom.trendPoints.innerHTML = pointElements.join("");
+
+    const xLabels = [];
+    const labelCount = Math.min(count, 4);
+    for (let i = 0; i < labelCount; i++) {
+      const idx = Math.round((i / (labelCount - 1)) * (count - 1));
+      xLabels.push(`<span style="left: ${(idx / (count - 1)) * 100}%">${idx + 1}</span>`);
+    }
+    dom.trendXAxis.innerHTML = xLabels.join("");
+  },
+
+  testStatistics(result) {
+    if (!result || !result.statistics) {
+      dom.testStats.style.display = "none";
+      return;
+    }
+
+    dom.testStats.style.display = "grid";
+    dom.statMean.textContent = `${result.statistics.mean} 秒/日`;
+    dom.statRange.textContent = `${result.statistics.min}~${result.statistics.max}`;
+
+    const trendInfo = JobData.TREND_DIRECTIONS[result.statistics.trendDirection] || JobData.TREND_DIRECTIONS.stable;
+    dom.statTrend.textContent = `${trendInfo.icon} ${trendInfo.label}`;
+    dom.statTrend.style.color = trendInfo.color;
+  },
+
+  testAttemptInfo() {
+    if (JobStore.testAttemptCount > 0 && JobStore.lastTestConfigHash) {
+      dom.testAttemptInfo.textContent = `第 ${JobStore.testAttemptCount} 次测试（相同配置）`;
+      dom.testAttemptInfo.style.display = "block";
+    } else {
+      dom.testAttemptInfo.textContent = "";
+      dom.testAttemptInfo.style.display = "none";
+    }
+  },
+
+  updateLiveSample(sample, index, totalSamples) {
+    if (!sample) return;
+
+    dom.errorReadout.textContent = `采样 ${index + 1}/${totalSamples}`;
+
+    if (JobStore.currentTestResult) {
+      const samplesSoFar = JobStore.currentTestResult.samples.slice(0, index + 1);
+      const absValues = samplesSoFar.map(s => s.abs);
+      const avg = absValues.reduce((a, b) => a + b, 0) / absValues.length;
+
+      Renderer.trendChart(samplesSoFar, JobStore.currentTestResult.targetMax, index + 1);
+
+      if (index >= 2) {
+        dom.scoreReadout.textContent = `约 ${Math.round(avg)}`;
+      }
+    }
+  },
+
+  showTestResult(result) {
+    if (!result) return;
+
+    Renderer.readouts(result.errorAbs, result.tier, {
+      accepted: result.accepted,
+      gap: result.gap,
+      targetMax: result.targetMax
+    });
+
+    Renderer.trendChart(result.samples, result.targetMax, result.samples.length);
+    Renderer.testStatistics(result);
+    Renderer.testAttemptInfo();
+  },
+
+  resetTestDisplay() {
+    dom.errorReadout.textContent = "--";
+    dom.scoreReadout.textContent = "--";
+    dom.testStats.style.display = "none";
+    Renderer.trendChart([], null, 0);
+    Renderer.testAttemptInfo();
+
+    const statusEl = $("#acceptanceStatus");
+    if (statusEl) statusEl.remove();
   }
 };

@@ -113,6 +113,38 @@
 
         <section class="test">
           <button id="testBtn">走时测试</button>
+          <div class="test-trend-chart" id="trendChart" aria-label="误差趋势图">
+            <div class="trend-y-axis">
+              <span class="trend-y-max" id="trendYMax">--</span>
+              <span class="trend-y-mid" id="trendYMid">--</span>
+              <span class="trend-y-min">0</span>
+            </div>
+            <div class="trend-plot-area">
+              <svg class="trend-svg" id="trendSvg" viewBox="0 0 200 100" preserveAspectRatio="none">
+                <line class="trend-grid-line" x1="0" y1="25" x2="200" y2="25" />
+                <line class="trend-grid-line" x1="0" y1="50" x2="200" y2="50" />
+                <line class="trend-grid-line" x1="0" y1="75" x2="200" y2="75" />
+                <line class="trend-target-line" id="trendTargetLine" x1="0" y1="50" x2="200" y2="50" stroke-dasharray="4,4" />
+                <polyline class="trend-line" id="trendLine" points="" fill="none" />
+              </svg>
+              <div class="trend-points" id="trendPoints"></div>
+            </div>
+            <div class="trend-x-axis" id="trendXAxis"></div>
+          </div>
+          <div class="test-stats" id="testStats" style="display:none;">
+            <div class="stat-item">
+              <span class="stat-label">平均误差</span>
+              <strong class="stat-value" id="statMean">--</strong>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">波动范围</span>
+              <strong class="stat-value" id="statRange">--</strong>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">趋势</span>
+              <strong class="stat-value" id="statTrend">--</strong>
+            </div>
+          </div>
           <div class="readout">
             <span>误差</span>
             <strong id="errorReadout">--</strong>
@@ -121,6 +153,7 @@
             <span>评分</span>
             <strong id="scoreReadout">--</strong>
           </div>
+          <div class="test-attempt-info" id="testAttemptInfo"></div>
         </section>
 
         <section class="test-history">
@@ -225,8 +258,29 @@
                 <li>
                   <span class="tune-icon tune-rand">≈</span>
                   <div>
-                    <strong>测试随机波动</strong>
-                    <p>±2.5 秒（由系统随机注入，模拟真实走时波动）</p>
+                    <strong>多轮采样测试</strong>
+                    <p>每次测试分 6 次采样，显示误差趋势，最终结果取平均值</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-missing">⚙</span>
+                  <div>
+                    <strong>委托特性</strong>
+                    <p>每个委托有独特的基线漂移和波动特性，需根据趋势微调</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-diff">📊</span>
+                  <div>
+                    <strong>趋势分析</strong>
+                    <p>观察误差走势，稳定/改善/变差 帮助判断校准方向</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="tune-icon tune-length">🔁</span>
+                  <div>
+                    <strong>可复现性</strong>
+                    <p>相同配置重复测试结果相近，更换零件/微调后重新计数</p>
                   </div>
                 </li>
               </ul>
